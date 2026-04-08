@@ -174,18 +174,14 @@ with tab3:
         color_discrete_sequence=['#1f4e79']
     )
    
-    # ================== HỒI QUY + LÀM ĐƯỜNG NẰM NGANG HƠN ==================
+    # Hồi quy tuyến tính chỉ từ 0 đến 10
     x_vals = df_filtered[score_col].values
     y_vals = df_filtered['Final'].values
     
     if len(x_vals) > 1:
         slope, intercept = np.polyfit(x_vals, y_vals, 1)
-        
-        # Giảm độ dốc để đường hồi quy nằm ngang hơn
-        slope_reduced = slope * 0.70          # Có thể chỉnh thành 0.6 hoặc 0.65 nếu muốn ngang hơn nữa
-        
         x_line = np.array([0, 10])
-        y_line = slope_reduced * x_line + intercept
+        y_line = slope * x_line + intercept
         
         scatter.add_trace(go.Scatter(
             x=x_line, 
@@ -195,14 +191,14 @@ with tab3:
             line=dict(color='#d62728', width=3.5)
         ))
    
-    # ================== THU NHỎ TRỤC X TỪ 0 ĐẾN 10 ==================
+    # ================== PHÓNG TO MÔ HÌNH - CẮT NGẮN TRỤC X TỪ 0 ĐẾN 10 ==================
     scatter.update_layout(
-        height=720,
+        height=720,                         # Tăng chiều cao để phóng to
         plot_bgcolor='#f0f6ff',
         
         xaxis=dict(
             title="Điểm Tổng hợp",
-            range=[0, 10],                  # ← Thu nhỏ trục X từ 0 đến 10
+            range=[0, 10],                  # ← Cắt ngắn trục X từ 0 đến 10 (phóng to)
             dtick=1,
             gridcolor='lightgray',
             autorange=False,
@@ -217,7 +213,7 @@ with tab3:
             dtick=1,
             gridcolor='lightgray',
             autorange=False,
-            scaleanchor="x",
+            scaleanchor="x",                # Giữ tỷ lệ cân đối
             scaleratio=1,
             showline=True,
             linewidth=1,
