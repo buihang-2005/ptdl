@@ -160,11 +160,10 @@ with tab3:
     st.subheader("Biểu đồ phân tán và Hồi quy tuyến tính")
     
     # Tạo biểu đồ scatter
-      # ================== SCATTER CHART - TRỤC X RỘNG HƠN ==================
     scatter = px.scatter(
         df_filtered,
-        x=score_col,
-        y='Final',
+        x=score_col,                    # Trục X: Điểm Tổng hợp
+        y='Final',                      # Trục Y: Điểm Cuối kỳ
         hover_name='Họ và tên',
         hover_data=['Học lực', 'Lớp'],
         title="Tương quan Điểm Cuối kỳ ↔ Điểm Tổng hợp",
@@ -176,16 +175,14 @@ with tab3:
         color_discrete_sequence=['#1f4e79']
     )
    
-    # Hồi quy tuyến tính
+    # Hồi quy tuyến tính chỉ từ 0 đến 10
     x_vals = df_filtered[score_col].values
     y_vals = df_filtered['Final'].values
     
     if len(x_vals) > 1:
         slope, intercept = np.polyfit(x_vals, y_vals, 1)
-        slope_reduced = slope * 0.70          # Giữ độ ngang như trước
-        
         x_line = np.array([0, 10])
-        y_line = slope_reduced * x_line + intercept
+        y_line = slope * x_line + intercept
         
         scatter.add_trace(go.Scatter(
             x=x_line, 
@@ -195,28 +192,25 @@ with tab3:
             line=dict(color='#d62728', width=3.5)
         ))
    
-    # ================== LÀM TRỤC X RỘNG RA ==================
+    # ================== THU RANGE CẢ HAI TRỤC TỪ 0 ĐẾN 10 ==================
     scatter.update_layout(
-        height=720,
-        width=900,                          # Tăng chiều rộng biểu đồ
+        height=650,
         plot_bgcolor='#f0f6ff',
         
         xaxis=dict(
             title="Điểm Tổng hợp",
             range=[0, 10],
-            dtick=1,                        # Khoảng cách mỗi tick là 1
+            dtick=1,
             gridcolor='lightgray',
             autorange=False,
             showline=True,
             linewidth=1,
-            linecolor='#333',
-            tickfont=dict(size=12),         # Chữ số to hơn
-            title_font=dict(size=14)
+            linecolor='#333'
         ),
         
         yaxis=dict(
             title="Điểm Cuối kỳ (50%)",
-            range=[0, 10],
+            range=[0, 10],                  # ← Thu gọn trục Y chỉ từ 0 đến 10
             dtick=1,
             gridcolor='lightgray',
             autorange=False,
@@ -224,15 +218,16 @@ with tab3:
             scaleratio=1,
             showline=True,
             linewidth=1,
-            linecolor='#333',
-            tickfont=dict(size=12)
-        ),
-        
-        # Tăng khoảng cách lề để biểu đồ thoáng hơn
-        margin=dict(l=60, r=40, t=60, b=60)
+            linecolor='#333'
+        )
     )
     
     st.plotly_chart(scatter, use_container_width=True)
+   
+    # Hiển thị hệ số tương quan
+    corr_value = df_filtered['Final'].corr(df_filtered[score_col]).round(4)
+    st.success(f"**Hệ số tương quan Pearson (r) = {corr_value}**")
+
     # ==================== Ma trận Tương quan Pearson ====================
     st.divider()
     st.subheader("🔢 Ma trận tương quan Pearson")
@@ -268,6 +263,7 @@ with tab3:
         st.caption("**Hình: Ma trận tương quan Pearson giữa các thành phần điểm**")
     else:
         st.warning("Không đủ dữ liệu để tạo ma trận tương quan.")
+
 
 # ====================== TAB 4: Dữ liệu thô ======================
 with tab4:
