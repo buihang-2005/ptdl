@@ -160,37 +160,54 @@ with tab3:
         st.plotly_chart(pie, use_container_width=True)
     
     with col_b:
-        st.subheader("Biểu đồ phân tán + Hồi quy")
+        st.subheader("Biểu đồ phân tán ngang (Horizontal)")
+        
+        # Biểu đồ phân tán QUAY NGANG
         scatter = px.scatter(
             df_filtered,
-            x='Final',
-            y=score_col,
+            x=score_col,                    # ← Đổi thành trục X (ngang)
+            y='Final',                      # ← Đổi thành trục Y (dọc)
             hover_name='Họ và tên',
             hover_data=['Học lực', 'Lớp'],
-            title="Tương quan Điểm Cuối kỳ → Điểm Tổng hợp",
-            labels={'Final': 'Điểm Cuối kỳ (50%)', score_col: 'Điểm Tổng hợp'},
+            title="Tương quan Điểm Cuối kỳ ↔ Điểm Tổng hợp",
+            labels={
+                score_col: 'Điểm Tổng hợp',
+                'Final': 'Điểm Cuối kỳ (50%)'
+            },
             opacity=0.85,
             color_discrete_sequence=['#1f4e79']
         )
        
-        # Thêm đường hồi quy tuyến tính
-        x = df_filtered['Final'].values
-        y = df_filtered[score_col].values
+        # Thêm đường hồi quy tuyến tính (vẫn tính đúng)
+        x = df_filtered[score_col].values      # Final → Tổng hợp
+        y = df_filtered['Final'].values
         slope, intercept = np.polyfit(x, y, 1)
         x_line = np.array([x.min()-0.5, x.max()+0.5])
         y_line = slope * x_line + intercept
        
-        scatter.add_trace(go.Scatter(x=x_line, y=y_line, mode='lines',
-                                    name='Hồi quy tuyến tính',
-                                    line=dict(color='#d62728', width=3.5)))
+        scatter.add_trace(go.Scatter(
+            x=x_line, 
+            y=y_line, 
+            mode='lines',
+            name='Hồi quy tuyến tính',
+            line=dict(color='#d62728', width=3.5)
+        ))
        
-        scatter.update_layout(height=620, plot_bgcolor='#f0f6ff')
+        # Cập nhật layout để biểu đồ đẹp hơn khi quay ngang
+        scatter.update_layout(
+            height=650, 
+            plot_bgcolor='#f0f6ff',
+            xaxis_title="Điểm Tổng hợp",
+            yaxis_title="Điểm Cuối kỳ (50%)"
+        )
+        
         st.plotly_chart(scatter, use_container_width=True)
    
+    # Hiển thị hệ số tương quan
     corr_value = df_filtered['Final'].corr(df_filtered[score_col]).round(4)
-    st.success(f"**Hệ số tương quan (r) = {corr_value}**")
+    st.success(f"**Hệ số tương quan Pearson (r) = {corr_value}**")
 
-    # ==================== Phần Ma trận Tương quan Pearson ====================
+    # ==================== Ma trận Tương quan Pearson ====================
     st.divider()
     st.subheader("🔢 Ma trận tương quan Pearson")
 
@@ -202,7 +219,6 @@ with tab3:
     if len(available_cols) > 1:
         corr_matrix = df_filtered[available_cols].corr().round(3)
        
-        # Đổi tên ngắn gọn cho dễ nhìn
         short_names = {
             'Chuyên cần 10%': 'CC',
             'Kiểm tra GK 20%': 'GK',
@@ -226,7 +242,6 @@ with tab3:
         st.caption("**Hình: Ma trận tương quan Pearson giữa các thành phần điểm**")
     else:
         st.warning("Không đủ dữ liệu để tạo ma trận tương quan.")
-
 # ====================== TAB 4: Dữ liệu thô ======================
 with tab4:
     st.header("📋 Dữ liệu thô")
