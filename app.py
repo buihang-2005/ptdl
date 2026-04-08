@@ -191,14 +191,14 @@ with tab3:
             line=dict(color='#d62728', width=3.5)
         ))
    
-    # ================== RANGE CẢ HAI TRỤC TỪ 0 ĐẾN 10 ==================
+    # ================== THU NHỎ CẢ HAI TRỤC TỪ 0 ĐẾN 10 ==================
     scatter.update_layout(
         height=680,
         plot_bgcolor='#f0f6ff',
         
         xaxis=dict(
             title="Điểm Tổng hợp",
-            range=[0, 10],                  # Trục X từ 0 đến 10
+            range=[0, 10],                  # ← Thu nhỏ trục X chỉ từ 0 đến 10
             dtick=1,
             gridcolor='lightgray',
             autorange=False,
@@ -209,7 +209,7 @@ with tab3:
         
         yaxis=dict(
             title="Điểm Cuối kỳ (50%)",
-            range=[0, 10],                  # Trục Y từ 0 đến 10
+            range=[0, 10],                  # Trục Y cũng từ 0 đến 10
             dtick=1,
             gridcolor='lightgray',
             autorange=False,
