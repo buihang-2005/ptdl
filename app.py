@@ -93,7 +93,6 @@ st.sidebar.image("hub_logo.png", use_container_width=True)   # ← Đặt tên f
 
 # Hoặc nếu bạn muốn thêm caption nhỏ
 st.sidebar.caption("HUB - 9/6")
-
 # ====================== TABS ======================
 tab1, tab2, tab3, tab4 = st.tabs([
     "📊 Thống kê & So sánh",
