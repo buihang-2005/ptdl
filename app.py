@@ -156,7 +156,7 @@ with tab2:
         bot10 = df_filtered.nsmallest(10, score_col)[['Họ và tên', 'Lớp', score_col, 'Học lực']]
         st.dataframe(bot10.reset_index(drop=True), use_container_width=True)
 
-# ====================== TAB 3: Tương quan Final vs Tổng ======================
+# ====================== TAB 3: TƯƠNG QUAN Final vs Tổng ======================
 with tab3:
     st.header("📈 Tương quan giữa Điểm Cuối kỳ và Điểm Tổng hợp")
     
@@ -169,7 +169,8 @@ with tab3:
         st.plotly_chart(pie, use_container_width=True)
     
     with col_b:
-        st.subheader("Biểu đồ phân tán: Final vs Tổng điểm")
+        st.subheader("Biểu đồ phân tán: Điểm Cuối kỳ vs Điểm Tổng hợp")
+        
         scatter = px.scatter(
             df_filtered,
             x='Final',
@@ -177,27 +178,63 @@ with tab3:
             hover_name='Họ và tên',
             hover_data=['Học lực', 'Lớp'],
             title="Tương quan Điểm Cuối kỳ → Điểm Tổng hợp",
-            labels={'Final': 'Điểm Cuối kỳ (50%)', score_col: 'Điểm Tổng hợp'},
+            labels={
+                'Final': 'Điểm Cuối kỳ (50%)',
+                score_col: 'Điểm Tổng hợp'
+            },
             opacity=0.85,
             color_discrete_sequence=['#1f4e79']
         )
         
-        # Đường hồi quy
+        # Đường hồi quy tuyến tính màu đỏ
         x = df_filtered['Final'].values
         y = df_filtered[score_col].values
         slope, intercept = np.polyfit(x, y, 1)
-        x_line = np.array([x.min()-0.5, x.max()+0.5])
+        x_line = np.array([x.min() - 0.5, x.max() + 0.5])
         y_line = slope * x_line + intercept
         
-        scatter.add_trace(go.Scatter(x=x_line, y=y_line, mode='lines',
-                                    name='Hồi quy tuyến tính', 
-                                    line=dict(color='#d62728', width=3.5)))
+        scatter.add_trace(go.Scatter(
+            x=x_line, 
+            y=y_line, 
+            mode='lines',
+            name='Hồi quy tuyến tính',
+            line=dict(color='#d62728', width=3.5)
+        ))
         
-        scatter.update_layout(height=650, plot_bgcolor='#f0f6ff')
+        # Chỉnh layout để biểu đồ nằm ngang đẹp
+        scatter.update_layout(
+            height=520,           # Giảm chiều cao
+            width=800,            # Tăng chiều rộng
+            plot_bgcolor='#f8fbff',
+            margin=dict(l=40, r=40, t=60, b=60),
+            xaxis=dict(
+                gridcolor='#e0e0e0',
+                title_font=dict(size=14),
+                tickfont=dict(size=12)
+            ),
+            yaxis=dict(
+                gridcolor='#e0e0e0',
+                title_font=dict(size=14),
+                tickfont=dict(size=12)
+            ),
+            legend=dict(
+                orientation="h",      # Legend nằm ngang
+                yanchor="bottom",
+                y=1.02,
+                xanchor="center",
+                x=0.5
+            )
+        )
+        
+        scatter.update_traces(
+            marker=dict(size=10, line=dict(width=1, color='white'))
+        )
+        
         st.plotly_chart(scatter, use_container_width=True)
     
+    # Hiển thị hệ số tương quan
     corr_value = df_filtered['Final'].corr(df_filtered[score_col]).round(4)
-    st.success(f"**Hệ số tương quan (r) = {corr_value}**")
+    st.success(f"**Hệ số tương quan Pearson (r) = {corr_value}**")
 
 # ====================== TAB 4: Dữ liệu thô ======================
 with tab4:
