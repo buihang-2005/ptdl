@@ -147,7 +147,7 @@ with tab2:
         bottom10 = df_filtered.nsmallest(10, score_col)[['Họ và tên', 'Lớp', score_col, 'Học lực']]
         st.dataframe(bottom10.reset_index(drop=True), use_container_width=True)
 
-# ====================== TAB 3: TƯƠNG QUAN & PHÂN TÁN (GIỐNG MẪU) ======================
+# ====================== TAB 3: TƯƠNG QUAN & PHÂN TÁN (MÀU ĐẸP) ======================
 with tab3:
     st.header("📈 Tương quan, Phân bố học lực & Biểu đồ phân tán")
     
@@ -164,7 +164,6 @@ with tab3:
     with col_b:
         st.subheader("Biểu đồ phân tán: Process vs Final")
         
-        # Biểu đồ phân tán giống mẫu bạn gửi
         scatter_fig = px.scatter(
             df_filtered,
             x='Process',
@@ -177,25 +176,15 @@ with tab3:
                 'Final': 'Điểm Cuối kỳ (50%)'
             },
             opacity=0.85,
-            color_discrete_sequence=['#1f4e79']   # Màu xanh đậm giống mẫu
+            color_discrete_sequence=['#1f4e79']   # Xanh navy đậm - đẹp và chuyên nghiệp
         )
         
-        # Thêm đường hồi quy tuyến tính màu đỏ
-        scatter_fig.update_traces(
-            marker=dict(
-                size=10,
-                line=dict(width=0.8, color='DarkSlateGrey')
-            )
-        )
-        
-        # Thêm trendline (đường hồi quy)
-        from plotly.graph_objects import Figure
-        # Tính hồi quy thủ công để thêm đường đỏ
+        # Thêm đường hồi quy màu đỏ nổi bật
         import numpy as np
-        x = df_filtered['Process']
-        y = df_filtered['Final']
+        x = df_filtered['Process'].values
+        y = df_filtered['Final'].values
         slope, intercept = np.polyfit(x, y, 1)
-        x_line = np.array([x.min(), x.max()])
+        x_line = np.array([x.min() - 0.5, x.max() + 0.5])
         y_line = slope * x_line + intercept
         
         scatter_fig.add_trace(
@@ -203,34 +192,46 @@ with tab3:
                 x=x_line,
                 y=y_line,
                 mode='lines',
-                name='Đường hồi quy',
-                line=dict(color='red', width=3)
+                name='Đường hồi quy tuyến tính',
+                line=dict(color='#d62728', width=3.5)   # Đỏ cam nổi bật
             )
         )
         
-        # Cải thiện giao diện giống mẫu
+        # Tùy chỉnh giao diện đẹp
+        scatter_fig.update_traces(
+            marker=dict(
+                size=11,
+                line=dict(width=1.2, color='white')   # Viền trắng tăng độ nổi
+            )
+        )
+        
         scatter_fig.update_layout(
             height=650,
-            plot_bgcolor='#f0f6ff',        # Nền xanh nhạt
-            paper_bgcolor='#f8fbff',
+            plot_bgcolor='#f0f6ff',      # Nền xanh nhạt nhẹ
+            paper_bgcolor='white',
             xaxis=dict(
-                gridcolor='lightgray',
+                gridcolor='#e0e0e0',
                 zeroline=False,
-                title_font=dict(size=14)
+                title_font=dict(size=14, color='#2c3e50')
             ),
             yaxis=dict(
-                gridcolor='lightgray',
+                gridcolor='#e0e0e0',
                 zeroline=False,
-                title_font=dict(size=14)
+                title_font=dict(size=14, color='#2c3e50')
             ),
-            font=dict(family="Arial", size=12),
-            showlegend=True,
-            legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01)
+            font=dict(family="Arial", size=13),
+            legend=dict(
+                yanchor="top", 
+                y=0.99, 
+                xanchor="left", 
+                x=0.01,
+                bgcolor="rgba(255,255,255,0.9)"
+            )
         )
         
         st.plotly_chart(scatter_fig, use_container_width=True)
     
-    # Ma trận tương quan giữ nguyên
+    # Ma trận tương quan
     st.subheader("Ma trận tương quan giữa các thành phần điểm")
     corr_cols = ['Chuyên cần 10%', 'Kiểm tra GK 20%', 
                  'Thảo luận, BTN, TT 20%', 'Thi cuối kỳ 50%', score_col]
@@ -245,7 +246,8 @@ with tab3:
                             title="Ma trận tương quan Pearson")
         fig_corr.update_layout(height=580)
         st.plotly_chart(fig_corr, use_container_width=True)
-
+    else:
+        st.info("Không đủ dữ liệu thành phần điểm để tính tương quan.")
 # ====================== TAB 4: DỮ LIỆU THÔ ======================
 with tab4:
     st.header("📋 Dữ liệu thô (sắp xếp theo điểm giảm dần)")
