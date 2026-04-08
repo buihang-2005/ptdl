@@ -145,7 +145,7 @@ with tab2:
         st.subheader("Bottom 10 thấp nhất")
         bot10 = df_filtered.nsmallest(10, score_col)[['Họ và tên', 'Lớp', score_col, 'Học lực']]
         st.dataframe(bot10.reset_index(drop=True), use_container_width=True)
-# ====================== TAB 3: TƯƠNG QUAN (ĐÃ GỘP) ======================
+# ====================== TAB 3: TƯƠNG QUAN ======================
 with tab3:
     st.header("📈 Tương quan giữa Điểm Cuối kỳ và Điểm Tổng hợp")
     
@@ -158,8 +158,9 @@ with tab3:
         st.plotly_chart(pie, use_container_width=True)
     
     with col_b:
-        st.subheader("Biểu đồ phân tán ngang (0 - 10)")
+        st.subheader("Biểu đồ phân tán ngang")
         
+        # Tạo biểu đồ scatter
         scatter = px.scatter(
             df_filtered,
             x=score_col,                    # Trục X: Điểm Tổng hợp
@@ -175,25 +176,26 @@ with tab3:
             color_discrete_sequence=['#1f4e79']
         )
        
-        # Đường hồi quy tuyến tính (giới hạn trong 0-10)
+        # Thêm đường hồi quy tuyến tính
         x_vals = df_filtered[score_col].values
         y_vals = df_filtered['Final'].values
-        slope, intercept = np.polyfit(x_vals, y_vals, 1)
-        x_line = np.array([0, 10])
-        y_line = slope * x_line + intercept
+        if len(x_vals) > 1:  # Tránh lỗi khi dữ liệu quá ít
+            slope, intercept = np.polyfit(x_vals, y_vals, 1)
+            x_line = np.array([0, 10])
+            y_line = slope * x_line + intercept
+            
+            scatter.add_trace(go.Scatter(
+                x=x_line, 
+                y=y_line, 
+                mode='lines',
+                name='Hồi quy tuyến tính',
+                line=dict(color='#d62728', width=3.5)
+            ))
        
-        scatter.add_trace(go.Scatter(
-            x=x_line, 
-            y=y_line, 
-            mode='lines',
-            name='Hồi quy tuyến tính',
-            line=dict(color='#d62728', width=3.5)
-        ))
-       
-        # ================== FIX CHẶT TRỤC Y TỪ 0 ĐẾN 10 ==================
+        # ================== CẤU HÌNH TRỤC Y CHỈ TỪ 0 ĐẾN 10 ==================
         scatter.update_layout(
             height=720,
-            width=720,
+            width=720,                          # Giữ tỷ lệ vuông
             plot_bgcolor='#f0f6ff',
             
             xaxis=dict(
@@ -204,25 +206,26 @@ with tab3:
                 autorange=False,
                 showline=True,
                 linewidth=1,
-                linecolor='black'
+                linecolor='#333'
             ),
             
             yaxis=dict(
                 title="Điểm Cuối kỳ (50%)",
-                range=[0, 10],                    # Bắt đầu từ 0 đến 10
+                range=[0, 10],                  # ← Buộc chặt từ 0 đến 10
                 dtick=1,
                 gridcolor='lightgray',
-                autorange=False,                  # Buộc không tự scale
-                scaleanchor="x",                  # Giữ tỷ lệ X = Y
+                autorange=False,                # Ngăn Plotly tự động thay đổi
+                scaleanchor="x",                # Giữ tỷ lệ X và Y bằng nhau
                 scaleratio=1,
                 showline=True,
                 linewidth=1,
-                linecolor='black'
+                linecolor='#333'
             )
         )
         
         st.plotly_chart(scatter, use_container_width=True)
    
+    # Hiển thị hệ số tương quan
     corr_value = df_filtered['Final'].corr(df_filtered[score_col]).round(4)
     st.success(f"**Hệ số tương quan Pearson (r) = {corr_value}**")
 
