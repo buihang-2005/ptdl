@@ -15,12 +15,15 @@ def load_and_clean_data():
     all_data = []
     for file in files:
         try:
+            # Đọc file CSV
             df = pd.read_csv(file)
-            # Xóa các cột trống dư thừa thường có trong file Excel/CSV
+            
+            # 1. Xóa các cột trống (thường là cột thừa bên phải do Pivot Table)
             df = df.loc[:, ~df.columns.str.contains('^Unnamed')]
+            
+            # 2. Chuẩn hóa tên cột (Xóa khoảng trắng, chuyển về chữ thường để so sánh)
             df.columns = df.columns.str.strip()
             
-            # Mapping thông minh dựa trên từ khóa
             mapping = {}
             for col in df.columns:
                 c_low = col.lower()
@@ -33,81 +36,79 @@ def load_and_clean_data():
                 elif 'xếp loại' in c_low: mapping[col] = 'Grade'
             
             df = df.rename(columns=mapping)
+
+            # 3. CHỐNG LỖI 'Total': Chỉ giữ lại những dòng có Mã số sinh viên hợp lệ
+            # Điều này giúp loại bỏ các dòng tiêu đề thừa hoặc bảng phụ Pivot bên dưới
+            if 'Mã số sinh viên' in df.columns:
+                df = df[df['Mã số sinh viên'].notna()]
             
-            # Chỉ lấy các cột đã map thành công
-            valid_cols = ['Mã số sinh viên', 'Họ và tên', 'Class', 'Attendance', 'Midterm', 'Assignment', 'Final', 'Total', 'Grade']
-            df = df[[c for c in valid_cols if c in df.columns]]
+            # Kiểm tra xem cột Total có tồn tại sau khi rename không
+            if 'Total' not in df.columns:
+                continue # Bỏ qua file này nếu không có cột tổng điểm
+                
+            # Ép kiểu số và xóa dòng không có điểm
+            df['Total'] = pd.to_numeric(df['Total'], errors='coerce')
+            df = df.dropna(subset=['Total'])
             
-            # Ép kiểu số cho các cột điểm
-            num_cols = ['Attendance', 'Midterm', 'Assignment', 'Final', 'Total']
-            for c in num_cols:
-                if c in df.columns:
-                    df[c] = pd.to_numeric(df[c], errors='coerce')
+            # Lấy các cột quan trọng
+            needed = ['Mã số sinh viên', 'Họ và tên', 'Class', 'Attendance', 'Midterm', 'Assignment', 'Final', 'Total', 'Grade']
+            existing = [c for c in needed if c in df.columns]
+            df = df[existing]
             
             all_data.append(df)
         except Exception as e:
-            st.error(f"Lỗi đọc file {file}: {e}")
+            st.error(f"Lỗi xử lý file {file}: {e}")
 
     if not all_data: return pd.DataFrame()
     
     full_df = pd.concat(all_data, ignore_index=True)
     
-    # --- FIX LỖI KEYERROR: FINAL & PROCESS ---
-    # Kiểm tra xem các cột cần thiết có tồn tại không trước khi tính
-    has_attendance = 'Attendance' in full_df.columns
-    has_midterm = 'Midterm' in full_df.columns
-    has_assignment = 'Assignment' in full_df.columns
-    has_final = 'Final' in full_df.columns
+    # Tính toán an toàn (kiểm tra cột trước khi tính)
+    for col in ['Attendance', 'Midterm', 'Assignment', 'Final']:
+        if col not in full_df.columns:
+            full_df[col] = 0
+        else:
+            full_df[col] = pd.to_numeric(full_df[col], errors='coerce').fillna(0)
 
-    # Tính điểm Quá trình (Process) an toàn
-    # Nếu thiếu cột nào thì coi như 0 điểm cột đó
-    full_df['Process'] = (
-        (full_df['Attendance'] if has_attendance else 0) * 0.1 + 
-        (full_df['Midterm'] if has_midterm else 0) * 0.2 + 
-        (full_df['Assignment'] if has_assignment else 0) * 0.2
-    ) / 0.5
+    full_df['Process'] = (full_df['Attendance']*0.1 + full_df['Midterm']*0.2 + full_df['Assignment']*0.2) / 0.5
+    full_df['Diff'] = (full_df['Process'] - full_df['Final']).abs()
+    
+    return full_df
 
-    # Tính độ lệch Diff an toàn
-    if has_final:
-        full_df['Diff'] = (full_df['Process'] - full_df['Final']).abs()
-    else:
-        full_df['Diff'] = 0 # Hoặc giá trị mặc định nếu không có điểm cuối kỳ
-
-    return full_df.dropna(subset=['Total'])
-
-# Tải dữ liệu
 df = load_and_clean_data()
 
 if df.empty:
-    st.warning("Vui lòng đảm bảo các file CSV nằm cùng thư mục với code.")
+    st.error("❌ Không thể trích xuất dữ liệu. Hãy kiểm tra định dạng file CSV.")
     st.stop()
 
-# Giao diện chính
-st.title("📊 Phân tích Kết quả AMA301 (Đã sửa lỗi Final)")
+# --- GIAO DIỆN ---
+st.title("🚀 Phân tích Kết quả Học tập AMA301")
 
-# Bộ lọc Sidebar
+# Sidebar
 classes = ["Tất cả"] + sorted(df['Class'].dropna().unique().tolist())
 sel_class = st.sidebar.selectbox("Chọn lớp", classes)
 filtered = df if sel_class == "Tất cả" else df[df['Class'] == sel_class]
 
-# Hiển thị các Metric
-c1, c2, c3 = st.columns(3)
-c1.metric("Tổng số SV", len(filtered))
-c2.metric("Điểm TB", round(filtered['Total'].mean(), 2))
-c3.metric("Tỷ lệ đạt (>=5)", f"{round((filtered['Total'] >= 5).mean()*100, 1)}%")
+# Hiển thị thống kê nhanh
+m1, m2, m3, m4 = st.columns(4)
+m1.metric("Tổng SV", len(filtered))
+m2.metric("Điểm TB", round(filtered['Total'].mean(), 2))
+m3.metric("Độ lệch chuẩn", round(filtered['Total'].std(), 2))
+m4.metric("Tỷ lệ Đạt", f"{round((filtered['Total']>=5).mean()*100, 1)}%")
 
-# Biểu đồ học lực (Mục 10)
+# Biểu đồ học lực
+st.header("10. Phân loại Học lực")
 if 'Grade' in filtered.columns:
-    st.subheader("Phân loại Học lực")
-    grade_counts = filtered['Grade'].astype(str).str.strip().value_counts().reset_index()
-    grade_counts.columns = ['Xếp loại', 'Số lượng']
-    st.plotly_chart(px.pie(grade_counts, names='Xếp loại', values='Số lượng', hole=0.4), use_container_width=True)
+    # Chuẩn hóa dữ liệu Xếp loại
+    filtered['Grade'] = filtered['Grade'].astype(str).str.strip()
+    grade_counts = filtered['Grade'].value_counts().reset_index()
+    grade_counts.columns = ['Loại', 'Số lượng']
+    st.plotly_chart(px.bar(grade_counts, x='Loại', y='Số lượng', color='Loại', title="Số lượng SV theo học lực"), use_container_width=True)
 
-# Biểu đồ ổn định (Mục 11 - Dùng cột Diff)
-if 'Diff' in filtered.columns:
-    st.subheader("Độ ổn định (Chênh lệch Quá trình - Cuối kỳ)")
-    st.plotly_chart(px.histogram(filtered, x='Diff', nbins=20, title="Phân phối độ lệch điểm"), use_container_width=True)
+# Biểu đồ phân phối
+st.header("Phân phối điểm số")
+st.plotly_chart(px.histogram(filtered, x='Total', nbins=20, color_discrete_sequence=['#636EFA']), use_container_width=True)
 
-# Hiển thị bảng
-st.write("### Dữ liệu chi tiết")
-st.dataframe(filtered)
+# Bảng dữ liệu
+with st.expander("🔍 Xem danh sách chi tiết"):
+    st.dataframe(filtered)
