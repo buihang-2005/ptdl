@@ -156,13 +156,13 @@ with tab3:
     st.plotly_chart(pie, use_container_width=True)
 
     # Scatter chart ở dưới
-    st.subheader("Scatter Chart")   # ← Đã sửa tên theo yêu cầu
+    st.subheader("Scatter Chart")
     
     # Tạo biểu đồ scatter
     scatter = px.scatter(
         df_filtered,
-        x=score_col,                    # Trục X: Điểm Tổng hợp
-        y='Final',                      # Trục Y: Điểm Cuối kỳ
+        x=score_col,
+        y='Final',
         hover_name='Họ và tên',
         hover_data=['Học lực', 'Lớp'],
         title="Tương quan Điểm Cuối kỳ ↔ Điểm Tổng hợp",
@@ -191,14 +191,14 @@ with tab3:
             line=dict(color='#d62728', width=3.5)
         ))
    
-    # Range cả hai trục từ 0 đến 10
+    # ================== PHÓNG TO MÔ HÌNH - CẮT NGẮN TRỤC X TỪ 0 ĐẾN 10 ==================
     scatter.update_layout(
-        height=680,
+        height=720,                         # Tăng chiều cao để phóng to
         plot_bgcolor='#f0f6ff',
         
         xaxis=dict(
             title="Điểm Tổng hợp",
-            range=[0, 10],
+            range=[0, 10],                  # ← Cắt ngắn trục X từ 0 đến 10 (phóng to)
             dtick=1,
             gridcolor='lightgray',
             autorange=False,
@@ -213,7 +213,7 @@ with tab3:
             dtick=1,
             gridcolor='lightgray',
             autorange=False,
-            scaleanchor="x",
+            scaleanchor="x",                # Giữ tỷ lệ cân đối
             scaleratio=1,
             showline=True,
             linewidth=1,
@@ -227,7 +227,7 @@ with tab3:
     corr_value = df_filtered['Final'].corr(df_filtered[score_col]).round(4)
     st.success(f"**Hệ số tương quan Pearson (r) = {corr_value}**")
 
-    # ==================== Ma trận Tương quan Pearson ====================
+    # Ma trận tương quan Pearson
     st.divider()
     st.subheader("🔢 Ma trận tương quan Pearson")
 
