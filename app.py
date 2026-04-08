@@ -147,7 +147,7 @@ with tab2:
         bottom10 = df_filtered.nsmallest(10, score_col)[['Họ và tên', 'Lớp', score_col, 'Học lực']]
         st.dataframe(bottom10.reset_index(drop=True), use_container_width=True)
 
-# ====================== TAB 3: TƯƠNG QUAN & PHÂN TÁN (ĐÃ FIX ĐẸP) ======================
+# ====================== TAB 3: TƯƠNG QUAN & PHÂN TÁN (ĐÃ FIX) ======================
 with tab3:
     st.header("📈 Tương quan, Phân bố học lực & Biểu đồ phân tán")
     
@@ -163,6 +163,7 @@ with tab3:
     
     with col_b:
         st.subheader("Biểu đồ phân tán: Process vs Final")
+        
         scatter_fig = px.scatter(
             df_filtered,
             x='Process',
@@ -176,12 +177,11 @@ with tab3:
                 'Process': 'Điểm Quá trình (40%)',
                 'Final': 'Điểm Cuối kỳ (50%)'
             },
-            opacity=0.8,
-            color_discrete_sequence=px.colors.qualitative.Bold,
-            trendline="ols",           # Đường hồi quy
-            trendline_scope="overall"
+            opacity=0.85,
+            color_discrete_sequence=px.colors.qualitative.Bold
         )
         
+        # Thêm đường hồi quy thủ công (để tránh lỗi trendline_scope)
         scatter_fig.update_layout(
             height=620,
             legend_title="Lớp",
@@ -191,7 +191,11 @@ with tab3:
         )
         
         scatter_fig.update_traces(
-            marker=dict(line=dict(width=0.6, color='DarkSlateGrey'), sizeref=0.12, sizemin=6)
+            marker=dict(
+                line=dict(width=0.6, color='DarkSlateGrey'),
+                sizeref=0.12,
+                sizemin=6
+            )
         )
         
         st.plotly_chart(scatter_fig, use_container_width=True)
@@ -211,6 +215,8 @@ with tab3:
                             title="Ma trận tương quan Pearson")
         fig_corr.update_layout(height=580)
         st.plotly_chart(fig_corr, use_container_width=True)
+    else:
+        st.info("Không đủ dữ liệu thành phần điểm để tính tương quan.")
 
 # ====================== TAB 4: DỮ LIỆU THÔ ======================
 with tab4:
