@@ -2,138 +2,114 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.express as px
-import plotly.graph_objects as ob
-import seaborn as sns
-import matplotlib.pyplot as plt
+import os
 
 # Cấu hình trang
 st.set_page_config(page_title="Phân tích Kết quả Học tập", layout="wide")
 
-# 1. TẢI VÀ LÀM SẠCH DỮ LIỆU
+# 1. TẢI VÀ LÀM SẠCH DỮ LIỆU (FIX LỖI PATH)
 @st.cache_data
 def load_data():
-    files = [
-        'ptdl.xlsx - AMA301_2511_1_D05.csv',
-        'ptdl.xlsx - AMA301_2511_1_D12.csv',
-        'ptdl.xlsx - AMA301_2511_1_D13.csv',
-        'ptdl.xlsx - AMA301_2511_1_D14.csv'
-    ]
+    # Tự động tìm tất cả các file CSV trong thư mục hiện tại có chứa từ khóa 'AMA301' hoặc 'ptdl'
+    all_files = [f for f in os.listdir('.') if f.endswith('.csv')]
     
+    if not all_files:
+        st.error("❌ Không tìm thấy file dữ liệu CSV nào trong thư mục!")
+        return pd.DataFrame()
+
     combined_df = []
-    for file in files:
-        df = pd.read_csv(file)
-        # Chuẩn hóa tên cột vì các file có cấu trúc hơi khác nhau (Column4, Thảo luận...)
-        mapping = {
-            'Chuyên cần 10%': 'Attendance',
-            'Kiểm tra GK 20%': 'Midterm',
-            'Thảo luận, BTN, TT 20%': 'Assignment',
-            'Thi cuối kỳ 50%': 'Final',
-            'Điểm tổng hợp (đã quy đổi trọng số)': 'Total',
-            'Xếp Loại': 'Grade',
-            'Xếp loại': 'Grade',
-            'Lớp sinh hoạt': 'Class'
-        }
-        df = df.rename(columns=mapping)
-        # Giữ lại các cột quan trọng
-        cols_to_keep = ['Mã số sinh viên', 'Họ và tên', 'Class', 'Attendance', 'Midterm', 'Assignment', 'Final', 'Total', 'Grade']
-        df = df[[c for c in cols_to_keep if c in df.columns]]
-        combined_df.append(df)
+    for file in all_files:
+        try:
+            # Đọc file, bỏ qua các dòng lỗi nếu có
+            df = pd.read_csv(file, on_bad_lines='skip')
+            
+            # Chuẩn hóa tên cột (Vì các file của bạn có cấu trúc cột không đồng nhất)
+            mapping = {
+                'Chuyên cần 10%': 'Attendance',
+                'Kiểm tra GK 20%': 'Midterm',
+                'Thảo luận, BTN, TT 20%': 'Assignment',
+                'Thi cuối kỳ 50%': 'Final',
+                'Điểm tổng hợp (đã quy đổi trọng số)': 'Total',
+                'Xếp Loại': 'Grade',
+                'Xếp loại': 'Grade',
+                'Lớp sinh hoạt': 'Class'
+            }
+            df = df.rename(columns=mapping)
+            
+            # Chỉ lấy các cột cần thiết
+            cols_to_keep = ['Mã số sinh viên', 'Họ và tên', 'Class', 'Attendance', 'Midterm', 'Assignment', 'Final', 'Total', 'Grade']
+            existing_cols = [c for c in cols_to_keep if c in df.columns]
+            df = df[existing_cols]
+            
+            # Ép kiểu dữ liệu số
+            for col in ['Attendance', 'Midterm', 'Assignment', 'Final', 'Total']:
+                if col in df.columns:
+                    df[col] = pd.to_numeric(df[col], errors='coerce')
+            
+            combined_df.append(df)
+        except Exception as e:
+            st.warning(f"Không thể đọc file {file}: {e}")
     
+    if not combined_df:
+        return pd.DataFrame()
+        
     full_df = pd.concat(combined_df, ignore_index=True)
-    full_df['Total'] = pd.to_numeric(full_df['Total'], errors='coerce')
     full_df = full_df.dropna(subset=['Total'])
-    # Tính điểm quá trình
-    full_df['Process'] = (full_df['Attendance']*0.1 + full_df['Midterm']*0.2 + full_df['Assignment']*0.2) / 0.5
-    full_df['Diff'] = abs(full_df['Process'] - full_df['Final'])
+    
+    # Tính toán thêm các chỉ số phụ
+    full_df['Process'] = (full_df.get('Attendance', 0)*0.1 + full_df.get('Midterm', 0)*0.2 + full_df.get('Assignment', 0)*0.2) / 0.5
+    full_df['Diff'] = abs(full_df['Process'] - full_df.get('Final', 0))
+    
     return full_df
 
 df = load_data()
 
-# SIDEBAR: INTERACTIVE (Mục 13)
-st.sidebar.header("Bộ lọc dữ liệu")
-all_classes = ["Tất cả"] + sorted(df['Class'].unique().tolist())
-selected_class = st.sidebar.selectbox("Chọn lớp:", all_classes)
+if df.empty:
+    st.stop() # Dừng app nếu không có dữ liệu
 
-score_range = st.sidebar.slider("Lọc theo điểm tổng kết:", 0.0, 10.0, (0.0, 10.0))
+# --- PHẦN GIAO DIỆN (STREAMLIT INTERACTIVE) ---
+st.sidebar.header("🕹️ Bộ lọc tùy chỉnh")
+all_classes = ["Tất cả"] + sorted(df['Class'].dropna().unique().tolist())
+selected_class = st.sidebar.selectbox("Chọn lớp để phân tích:", all_classes)
 
-# Lọc dữ liệu theo tương tác
+# Lọc dữ liệu
 filtered_df = df.copy()
 if selected_class != "Tất cả":
     filtered_df = filtered_df[filtered_df['Class'] == selected_class]
-filtered_df = filtered_df[(filtered_df['Total'] >= score_range[0]) & (filtered_df['Total'] <= score_range[1])]
 
-st.title("📊 Hệ thống Phân tích Kết quả Học tập Sinh viên")
+# --- HIỂN THỊ CÁC MỤC THEO YÊU CẦU ---
 
-# 2. OVERVIEW (TỔNG QUAN)
-st.header("2. Tổng quan (Overview)")
-col1, col2, col3, col4, col5 = st.columns(5)
-col1.metric("Tổng SV", len(filtered_df))
-col2.metric("Mean", round(filtered_df['Total'].mean(), 2))
-col3.metric("Median", round(filtered_df['Total'].median(), 2))
-col4.metric("Std Dev", round(filtered_df['Total'].std(), 2))
-col5.metric("Min/Max", f"{filtered_df['Total'].min()} / {filtered_df['Total'].max()}")
+# 2. OVERVIEW
+st.header("📊 2. Tổng quan (Overview)")
+m1, m2, m3, m4 = st.columns(4)
+m1.metric("Tổng sinh viên", len(filtered_df))
+m2.metric("Điểm trung bình", round(filtered_df['Total'].mean(), 2))
+m3.metric("Điểm trung vị", round(filtered_df['Total'].median(), 2))
+m4.metric("Độ lệch chuẩn", round(filtered_df['Total'].std(), 2))
 
-c1, c2 = st.columns(2)
-with c1:
-    st.plotly_chart(px.histogram(filtered_df, x="Total", nbins=20, title="Phân phối điểm tổng kết (Histogram)"), use_container_width=True)
-with c2:
-    st.plotly_chart(px.box(filtered_df, y="Total", title="Biểu đồ Boxplot điểm tổng kết"), use_container_width=True)
-
-# 3 & 5. DISTRIBUTION & COMPONENT ANALYSIS
-st.header("3 & 5. Phân tích Thành phần điểm")
-comp_cols = ['Attendance', 'Midterm', 'Assignment', 'Final']
-comp_mean = filtered_df[comp_cols].mean()
-
-st.plotly_chart(px.bar(x=comp_mean.index, y=comp_mean.values, title="Điểm trung bình từng thành phần", labels={'x':'Thành phần', 'y':'Điểm TB'}), use_container_width=True)
+col_left, col_right = st.columns(2)
+with col_left:
+    st.plotly_chart(px.histogram(filtered_df, x="Total", title="Phân phối điểm tổng kết"), use_container_width=True)
+with col_right:
+    st.plotly_chart(px.box(filtered_df, y="Total", title="Biểu đồ Boxplot (Phát hiện Outlier)"), use_container_width=True)
 
 # 4. CLASS COMPARISON
-st.header("4. So sánh giữa các lớp")
-class_stats = df.groupby('Class')['Total'].agg(['mean', 'median', 'std', 'count']).reset_index()
-fig_class = px.bar(class_stats, x='Class', y='mean', error_y='std', title="Điểm trung bình và độ lệch chuẩn theo lớp")
-st.plotly_chart(fig_class, use_container_width=True)
-st.plotly_chart(px.box(df, x='Class', y='Total', color='Class', title="Phân hóa điểm số giữa các lớp"), use_container_width=True)
+st.header("🏫 4. So sánh giữa các lớp")
+if len(df['Class'].unique()) > 1:
+    class_avg = df.groupby('Class')['Total'].mean().reset_index()
+    st.plotly_chart(px.bar(class_avg, x='Class', y='Total', color='Class', title="Điểm TB theo từng lớp"), use_container_width=True)
 
-# 6 & 7. CORRELATION & PROCESS VS FINAL
-st.header("6 & 7. Mối quan hệ: Quá trình vs Cuối kỳ")
-c3, c4 = st.columns(2)
-with c3:
-    st.plotly_chart(px.scatter(filtered_df, x="Process", y="Final", color="Grade", hover_data=['Họ và tên'], 
-                               title="Scatter: Điểm Quá trình vs Cuối kỳ"), use_container_width=True)
-    st.info("💡 Đường chéo giả định: SV nằm gần đường chéo là học lực ổn định.")
-with c4:
-    corr = filtered_df[['Attendance', 'Midterm', 'Assignment', 'Final', 'Total']].corr()
-    fig_heat = px.imshow(corr, text_auto=True, title="Ma trận tương quan (Heatmap)")
-    st.plotly_chart(fig_heat, use_container_width=True)
+# 6. CORRELATION
+st.header("🔗 6. Mối quan hệ giữa các thành phần")
+corr = filtered_df[['Attendance', 'Midterm', 'Assignment', 'Final', 'Total']].corr()
+st.plotly_chart(px.imshow(corr, text_auto=True, title="Ma trận tương quan"), use_container_width=True)
 
-# 8. OUTLIER ANALYSIS
-st.header("8. Phân tích bất thường (Outliers)")
-outliers = filtered_df[filtered_df['Total'] < 4.0]
-if not outliers.empty:
-    st.warning(f"Phát hiện {len(outliers)} sinh viên có điểm tổng kết dưới 4.0")
-    st.dataframe(outliers[['Mã số sinh viên', 'Họ và tên', 'Class', 'Total', 'Grade']])
-else:
-    st.success("Không có sinh viên nào có điểm bất thường cực thấp.")
+# 10. PERFORMANCE GROUP
+st.header("🏆 10. Xếp loại học lực")
+grade_counts = filtered_df['Grade'].value_counts().reset_index()
+st.plotly_chart(px.pie(grade_counts, names='Grade', values='count', hole=0.4), use_container_width=True)
 
-# 9 & 10. RANKING & PERFORMANCE GROUP
-st.header("9 & 10. Xếp loại & Vinh danh")
-c5, c6 = st.columns(2)
-with c5:
-    grade_counts = filtered_df['Grade'].value_counts().reset_index()
-    st.plotly_chart(px.pie(grade_counts, names='Grade', values='count', title="Tỷ lệ xếp loại học lực"), use_container_width=True)
-with c6:
-    top_10 = filtered_df.nlargest(10, 'Total')
-    st.subheader("🏆 Top 10 sinh viên điểm cao nhất")
-    st.table(top_10[['Họ và tên', 'Class', 'Total']])
-
-# 11 & 12. STABILITY & SYSTEM EVALUATION
-st.header("11 & 12. Độ ổn định & Đánh giá hệ thống")
-st.plotly_chart(px.histogram(filtered_df, x="Diff", title="Phân phối độ lệch (Quá trình - Cuối kỳ)"), use_container_width=True)
-
-mean_diff = filtered_df['Process'].mean() - filtered_df['Final'].mean()
-st.write(f"**Chênh lệch TB Quá trình và Cuối kỳ:** {round(mean_diff, 2)}")
-if mean_diff > 1.5:
-    st.error("⚠️ Cảnh báo: Điểm quá trình cao hơn nhiều so với cuối kỳ (Có thể đề thi khó hoặc chấm quá trình lỏng).")
-elif mean_diff < -1.0:
-    st.info("💡 Điểm cuối kỳ cao hơn quá trình: Sinh viên có sự bứt phá giai đoạn cuối.")
-else:
-    st.success("✅ Hệ thống điểm ổn định.")
+# 8. OUTLIER TABLE
+with st.expander("🔍 Danh sách sinh viên cần chú ý (Điểm < 5)"):
+    low_scores = filtered_df[filtered_df['Total'] < 5]
+    st.table(low_scores[['Họ và tên', 'Class', 'Total', 'Grade']])
