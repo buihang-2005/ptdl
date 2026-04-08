@@ -1,11 +1,7 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-import plotly.graph_objects as go
-import matplotlib.pyplot as plt
 import statsmodels.api as sm
-from sklearn.cluster import KMeans
-from sklearn.preprocessing import StandardScaler
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -24,7 +20,7 @@ if uploaded_file is not None:
                     "Thi cuối kỳ 50%", "Điểm tổng hợp (đã quy đổi trọng số)"]
 
     for sheet_name in sheets:
-        # Tìm header
+        # Tìm dòng header
         df_temp = pd.read_excel(xls, sheet_name=sheet_name, header=None)
         header_row = None
         for i in range(min(15, len(df_temp))):
@@ -51,7 +47,7 @@ if uploaded_file is not None:
             df['Họ và tên'] = df['Họ và tên'].astype(str) + " " + df['Column4'].astype(str)
             df.drop(columns=['Column4'], errors='ignore', inplace=True)
         
-        # Chuyển sang numeric
+        # Chuyển các cột điểm sang số
         for col in numeric_cols:
             if col in df.columns:
                 df[col] = pd.to_numeric(df[col], errors='coerce')
@@ -108,55 +104,38 @@ if uploaded_file is not None:
             model = sm.OLS(y, X_const).fit()
             st.text(model.summary().as_text())
             
-            # 5. Clustering
-            st.markdown("### 5. Phân nhóm sinh viên (KMeans 3 nhóm)")
-            scaler = StandardScaler()
-            scaled_data = scaler.fit_transform(df[numeric_cols].fillna(0))
-            kmeans = KMeans(n_clusters=3, random_state=42, n_init=10)
-            df["Cluster"] = kmeans.fit_predict(scaled_data)
-            
-            fig_cluster = px.scatter(df, 
-                                   x="Điểm tổng hợp (đã quy đổi trọng số)", 
-                                   y="Thi cuối kỳ 50%", 
-                                   color="Cluster",
-                                   hover_data=["Họ và tên", "Xếp Loại"],
-                                   title="Phân nhóm sinh viên theo điểm")
-            st.plotly_chart(fig_cluster, use_container_width=True)
-            
-            # 6. Anomaly Detection
-            st.markdown("### 6. Phát hiện bất thường (Điểm = 0)")
+            # 6. Anomaly Detection (bỏ clustering vì thiếu sklearn)
+            st.markdown("### 5. Phát hiện bất thường (Điểm = 0)")
             anomaly = df[(df[numeric_cols] == 0).any(axis=1)]
             if len(anomaly) > 0:
                 st.error(f"🚨 Có {len(anomaly)} sinh viên có điểm 0 (bất thường)")
-                st.dataframe(anomaly[["STT", "Họ và tên", "Mã số sinh viên"] + numeric_cols])
+                st.dataframe(anomaly[["STT", "Họ và tên", "Mã số sinh viên"] + numeric_cols].head(20))
             else:
                 st.success("✅ Không phát hiện điểm bất thường (0)")
     
-    # ====================== TAB TỔNG HỢP ======================
+    # Tab Tổng hợp
     with tabs[-1]:
         st.subheader("🔥 TỔNG HỢP TẤT CẢ CÁC LỚP")
         
         avg_by_class = full_df.groupby("Lớp")["Điểm tổng hợp (đã quy đổi trọng số)"].mean().round(2)
         st.bar_chart(avg_by_class, use_container_width=True)
         
-        st.markdown("### Insight Tổng Hợp (Quan trọng nhất - Dùng đi thi 💯)")
+        st.markdown("### Insight Tổng Hợp (Dùng đi thi 💯)")
         st.markdown("""
         **🔥 Những insight quan trọng nhất:**
-        
-        1. **Thi cuối kỳ (50%)** và **Thảo luận - BTN - TT (20%)** là hai yếu tố **ảnh hưởng mạnh nhất** đến điểm tổng hợp.
-        
-        2. **Chuyên cần** có tương quan tốt → Đi học đầy đủ giúp tăng điểm dễ dàng.
-        
-        3. Sinh viên có **điểm 0** ở bất kỳ cột nào → rất dễ bị kéo điểm xuống hoặc xếp loại thấp.
-        
-        4. Toàn bộ các lớp có tỷ lệ **Giỏi / Xuất sắc** khoảng **40-45%** → cạnh tranh khá cao.
-        
-        5. **Lời khuyên thi cử:**
-           - Ưu tiên ôn thật kỹ **thi cuối kỳ**.
-           - Làm tốt **bài tập nhóm / thảo luận** (chiếm 20%).
-           - Không để điểm 0 ở bất kỳ phần nào.
-        
-        **Mục tiêu Xuất sắc:** Cần đạt ít nhất **9.0** ở cả Thảo luận + Thi cuối kỳ.
+
+        1. **Thi cuối kỳ (50%)** và **Thảo luận, BTN, TT (20%)** là hai yếu tố ảnh hưởng **mạnh nhất** đến điểm tổng hợp.
+
+        2. **Chuyên cần** có ảnh hưởng rõ → Đi học đầy đủ giúp tăng điểm dễ dàng.
+
+        3. Sinh viên có **điểm 0** ở bất kỳ phần nào → rất dễ bị kéo điểm xuống hoặc xếp loại thấp.
+
+        4. Toàn bộ khoảng **40-45%** sinh viên đạt Giỏi/Xuất sắc → cạnh tranh cao.
+
+        **Lời khuyên thi:**
+        - Ưu tiên ôn kỹ **thi cuối kỳ**.
+        - Làm tốt **bài tập nhóm / thảo luận**.
+        - Tuyệt đối không để điểm 0.
         """)
         
         st.balloons()
