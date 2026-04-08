@@ -146,7 +146,6 @@ with tab2:
         bot10 = df_filtered.nsmallest(10, score_col)[['Họ và tên', 'Lớp', score_col, 'Học lực']]
         st.dataframe(bot10.reset_index(drop=True), use_container_width=True)
 # ====================== TAB 3: TƯƠNG QUAN ======================
-# ====================== TAB 3: TƯƠNG QUAN ======================
 with tab3:
     st.header("📈 Tương quan giữa Điểm Cuối kỳ và Điểm Tổng hợp")
     
