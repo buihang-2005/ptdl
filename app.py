@@ -146,14 +146,26 @@ with tab2:
         bot10 = df_filtered.nsmallest(10, score_col)[['Họ và tên', 'Lớp', score_col, 'Học lực']]
         st.dataframe(bot10.reset_index(drop=True), use_container_width=True)
 # ====================== TAB 3: TƯƠNG QUAN ======================
+  with tab3:
+    st.header("📈 Tương quan giữa Điểm Cuối kỳ và Điểm Tổng hợp")
+   
+    # ==================== Định nghĩa 2 cột ====================
+    col_a, col_b = st.columns([1, 1])
+   
+    with col_a:
+        st.subheader("Tỷ lệ Học lực")
+        pie = px.pie(df_filtered, names='Học lực', hole=0.4,
+                    color_discrete_sequence=px.colors.qualitative.Set3)
+        st.plotly_chart(pie, use_container_width=True)
+   
     with col_b:
         st.subheader("Biểu đồ phân tán ngang")
        
         # Tạo biểu đồ scatter
         scatter = px.scatter(
             df_filtered,
-            x=score_col,          # Điểm Tổng hợp
-            y='Final',            # Điểm Cuối kỳ
+            x=score_col,
+            y='Final',
             hover_name='Họ và tên',
             hover_data=['Học lực', 'Lớp'],
             title="Tương quan Điểm Cuối kỳ ↔ Điểm Tổng hợp",
@@ -165,14 +177,13 @@ with tab2:
             color_discrete_sequence=['#1f4e79']
         )
       
-        # ================== HỒI QUY CHỈ TỪ 0 ĐẾN 10 ==================
+        # Hồi quy tuyến tính
         x_vals = df_filtered[score_col].values
         y_vals = df_filtered['Final'].values
        
         if len(x_vals) > 1:
             slope, intercept = np.polyfit(x_vals, y_vals, 1)
            
-            # Đường hồi quy chỉ vẽ trong khoảng 0 đến 10
             x_line = np.array([0, 10])
             y_line = slope * x_line + intercept
            
@@ -184,48 +195,78 @@ with tab2:
                 line=dict(color='#d62728', width=3.5)
             ))
       
-        # ====================== CẤU HÌNH QUAN TRỌNG ======================
+        # Cấu hình biểu đồ - Giới hạn chặt từ 0 đến 10
         scatter.update_layout(
             height=720,
-            width=720,
             plot_bgcolor='#f0f6ff',
            
-            # Giới hạn chặt chẽ trục X từ 0 đến 10
             xaxis=dict(
                 title="Điểm Tổng hợp",
-                range=[0, 10],           # <-- Giới hạn cứng
+                range=[0, 10],
                 dtick=1,
                 gridcolor='lightgray',
-                autorange=False,         # Tắt autorange để giữ range cố định
+                autorange=False,
                 showline=True,
                 linewidth=1,
                 linecolor='#333',
-                zeroline=True,
-                zerolinecolor='lightgray'
+                zeroline=True
             ),
            
-            # Giới hạn chặt chẽ trục Y từ 0 đến 10
             yaxis=dict(
                 title="Điểm Cuối kỳ (50%)",
-                range=[0, 10],           # <-- Giới hạn cứng
+                range=[0, 10],
                 dtick=1,
                 gridcolor='lightgray',
-                autorange=False,         # Tắt autorange
-                scaleanchor="x",         # Giữ tỷ lệ X-Y bằng nhau
+                autorange=False,
+                scaleanchor="x",
                 scaleratio=1,
                 showline=True,
                 linewidth=1,
                 linecolor='#333',
-                zeroline=True,
-                zerolinecolor='lightgray'
+                zeroline=True
             )
         )
        
-        # Thêm grid và style đẹp hơn
-        scatter.update_xaxes(showgrid=True, gridwidth=1, gridcolor='rgba(211,211,211,0.6)')
-        scatter.update_yaxes(showgrid=True, gridwidth=1, gridcolor='rgba(211,211,211,0.6)')
-       
         st.plotly_chart(scatter, use_container_width=True)
+  
+    # Hiển thị hệ số tương quan
+    corr_value = df_filtered['Final'].corr(df_filtered[score_col]).round(4)
+    st.success(f"**Hệ số tương quan Pearson (r) = {corr_value}**")
+
+    # Ma trận tương quan
+    st.divider()
+    st.subheader("🔢 Ma trận tương quan Pearson")
+    
+    corr_columns = ['Chuyên cần 10%', 'Kiểm tra GK 20%',
+                    'Thảo luận, BTN, TT 20%', 'Thi cuối kỳ 50%', score_col]
+  
+    available_cols = [col for col in corr_columns if col in df_filtered.columns]
+  
+    if len(available_cols) > 1:
+        corr_matrix = df_filtered[available_cols].corr().round(3)
+      
+        short_names = {
+            'Chuyên cần 10%': 'CC',
+            'Kiểm tra GK 20%': 'GK',
+            'Thảo luận, BTN, TT 20%': 'TL',
+            'Thi cuối kỳ 50%': 'CK',
+            score_col: 'TH'
+        }
+        corr_matrix = corr_matrix.rename(columns=short_names, index=short_names)
+      
+        fig_corr = px.imshow(
+            corr_matrix,
+            text_auto=True,
+            aspect="auto",
+            color_continuous_scale='RdYlBu_r',
+            title="Ma trận tương quan Pearson"
+        )
+      
+        fig_corr.update_layout(height=650, title_font=dict(size=18))
+        st.plotly_chart(fig_corr, use_container_width=True)
+        st.caption("**Hình: Ma trận tương quan Pearson giữa các thành phần điểm**")
+    else:
+        st.warning("Không đủ dữ liệu để tạo ma trận tương quan.")
     # ==================== Ma trận Tương quan Pearson ====================
     st.divider()
     st.subheader("🔢 Ma trận tương quan Pearson")
