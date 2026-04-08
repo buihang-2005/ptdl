@@ -47,7 +47,7 @@ def load_and_clean_data():
             if col in df.columns:
                 df[col] = pd.to_numeric(df[col], errors='coerce')
         
-        # Loại bỏ dòng rác
+        # Loại bỏ dòng rác (Pivot Table)
         df = df.dropna(subset=['Diem_tong'], how='all')
         df = df[~df['Ho_ten'].astype(str).str.contains('Row Labels|Grand Total|TOP 5|Average|Count', na=False, case=False)]
         
@@ -89,7 +89,7 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs([
     "5. Ranking & Học lực"
 ])
 
-# ==================== TAB 1: CHI TIẾT TỪNG LỚP (ĐÃ SỬA LỖI) ====================
+# ==================== TAB 1: CHI TIẾT TỪNG LỚP (KHÔNG DÙNG BOXPLOT) ====================
 with tab1:
     st.header("1. CHI TIẾT TỪNG LỚP HỌC PHẦN")
     
@@ -103,23 +103,18 @@ with tab1:
     
     st.subheader(f"📌 Lớp {selected_class} — {len(df_selected)} sinh viên")
     
-    # Thống kê
+    # Thống kê mô tả
     stats = df_selected['Diem_tong'].describe().round(2)
     st.dataframe(stats, use_container_width=True)
     
-    # Biểu đồ
-    col1, col2 = st.columns(2)
-    with col1:
-        fig_hist = px.histogram(df_selected, x='Diem_tong', nbins=15,
-                               title=f"Histogram điểm tổng - Lớp {selected_class}")
-        st.plotly_chart(fig_hist, use_container_width=True)
+    # Chỉ giữ Histogram (đã bỏ Boxplot)
+    st.subheader("Histogram phân bố điểm")
+    fig_hist = px.histogram(df_selected, x='Diem_tong', nbins=15,
+                           title=f"Phân bố điểm tổng - Lớp {selected_class}",
+                           color_discrete_sequence=['#636EFA'])
+    st.plotly_chart(fig_hist, use_container_width=True)
     
-    with col2:
-        fig_box = px.box(df_selected, y='Diem_tong', 
-                        title=f"Boxplot - Lớp {selected_class}")
-        st.plotly_chart(fig_box, use_container_width=True)
-    
-    # Top 5 & Bottom 5 - ĐÃ SỬA TÊN CỘT
+    # Top 5 & Bottom 5
     st.subheader(f"Top 5 & Bottom 5 - Lớp {selected_class}")
     colA, colB = st.columns(2)
     with colA:
@@ -145,7 +140,7 @@ with tab2:
     col1, col2 = st.columns(2)
     with col1:
         fig = px.bar(comparison.reset_index(), x='Lop_hoc_phan', y='Điểm TB',
-                    title="Điểm trung bình theo lớp", color='Điểm TB', text='Điểm TB')
+                    title="Điểm trung bình theo lớp học phần", color='Điểm TB', text='Điểm TB')
         fig.update_traces(texttemplate='%{text:.2f}')
         st.plotly_chart(fig, use_container_width=True)
     
@@ -190,4 +185,4 @@ with tab5:
     st.plotly_chart(px.bar(df['Hoc_luc'].value_counts().sort_index(), 
                           title="Phân bố học lực toàn khóa"), use_container_width=True)
 
-st.sidebar.success("✅ Ứng dụng đã chạy ổn định - Lỗi KeyError đã được sửa")
+st.sidebar.success("✅ Đã sửa lỗi & bỏ Boxplot ở phần chi tiết từng lớp")
