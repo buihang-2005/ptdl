@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-import seaborn as sns
 import matplotlib.pyplot as plt
 import statsmodels.api as sm
 from sklearn.cluster import KMeans
@@ -25,47 +24,34 @@ if uploaded_file is not None:
                     "Thi cuối kỳ 50%", "Điểm tổng hợp (đã quy đổi trọng số)"]
 
     for sheet_name in sheets:
-        # Đọc với skip rows để bỏ header thừa
-        df = pd.read_excel(xls, sheet_name=sheet_name, header=None)
-        
-        # Tìm dòng header thật (dòng chứa "STT", "Mã số sinh viên", "Họ và tên")
+        # Tìm header
+        df_temp = pd.read_excel(xls, sheet_name=sheet_name, header=None)
         header_row = None
-        for i in range(min(10, len(df))):
-            row = df.iloc[i].astype(str).str.lower()
+        for i in range(min(15, len(df_temp))):
+            row = df_temp.iloc[i].astype(str).str.lower()
             if row.str.contains('stt').any() and row.str.contains('mã số sinh viên').any():
                 header_row = i
                 break
         
         if header_row is None:
-            st.error(f"Không tìm thấy header ở sheet {sheet_name}")
+            st.warning(f"Không tìm thấy header ở sheet {sheet_name}")
             continue
             
-        # Đọc lại từ dòng header
         df = pd.read_excel(xls, sheet_name=sheet_name, header=header_row)
         
-        # Lọc chỉ phần dữ liệu sinh viên (STT là số)
+        # Lọc dữ liệu sinh viên
         df = df[df['STT'].notna()].copy()
         df['STT'] = pd.to_numeric(df['STT'], errors='coerce')
         df = df[df['STT'].notna()].reset_index(drop=True)
         
-        # Xử lý tên cột bị lệch (cột Column4, Xếp loại vs Xếp Loại)
-        col_mapping = {}
-        for col in df.columns:
-            if pd.isna(col) or str(col).strip() == '':
-                continue
-            if "Xếp loại" in str(col) or "Xếp Loại" in str(col):
-                col_mapping[col] = "Xếp Loại"
-            if "Column4" in str(col):
-                col_mapping[col] = "Column4"
-        
-        df.rename(columns=col_mapping, inplace=True)
-        
-        # Ghép cột Họ và tên nếu có Column4
-        if 'Column4' in df.columns:
+        # Xử lý tên cột
+        if "Xếp loại" in df.columns:
+            df.rename(columns={"Xếp loại": "Xếp Loại"}, inplace=True)
+        if "Column4" in df.columns:
             df['Họ và tên'] = df['Họ và tên'].astype(str) + " " + df['Column4'].astype(str)
-            df.drop(columns=['Column4'], inplace=True, errors='ignore')
+            df.drop(columns=['Column4'], errors='ignore', inplace=True)
         
-        # Chuyển các cột điểm sang numeric
+        # Chuyển sang numeric
         for col in numeric_cols:
             if col in df.columns:
                 df[col] = pd.to_numeric(df[col], errors='coerce')
@@ -74,12 +60,12 @@ if uploaded_file is not None:
         all_dfs.append(df)
     
     if not all_dfs:
-        st.error("Không đọc được dữ liệu từ file!")
+        st.error("Không đọc được dữ liệu!")
         st.stop()
         
     full_df = pd.concat(all_dfs, ignore_index=True)
     
-    # ====================== TẠO TAB ======================
+    # Tạo tabs
     tab_list = sheets + ["🔥 TỔNG HỢP TẤT CẢ CÁC LỚP"]
     tabs = st.tabs(tab_list)
 
@@ -89,7 +75,7 @@ if uploaded_file is not None:
             df = all_dfs[i].copy()
             
             if len(df) == 0:
-                st.warning("Sheet này không có dữ liệu sinh viên")
+                st.warning("Không có dữ liệu sinh viên")
                 continue
                 
             col1, col2 = st.columns([3, 2])
@@ -109,58 +95,71 @@ if uploaded_file is not None:
             with col2:
                 st.markdown("### 3. Ma trận tương quan")
                 corr = df[numeric_cols].corr().round(2)
-                fig, ax = plt.subplots(figsize=(8, 6))
-                sns.heatmap(corr, annot=True, cmap="coolwarm", ax=ax)
-                st.pyplot(fig)
+                fig = px.imshow(corr, text_auto=True, aspect="auto", 
+                               color_continuous_scale='RdBu_r', title="Correlation Heatmap")
+                st.plotly_chart(fig, use_container_width=True)
             
             # 4. Hồi quy
-            st.markdown("### 4. Mô hình hồi quy")
+            st.markdown("### 4. Mô hình hồi quy (Regression)")
             X_cols = [c for c in numeric_cols if c != "Điểm tổng hợp (đã quy đổi trọng số)"]
             X = df[X_cols].fillna(0)
             y = df["Điểm tổng hợp (đã quy đổi trọng số)"].fillna(0)
-            X = sm.add_constant(X)
-            model = sm.OLS(y, X).fit()
+            X_const = sm.add_constant(X)
+            model = sm.OLS(y, X_const).fit()
             st.text(model.summary().as_text())
             
             # 5. Clustering
-            st.markdown("### 5. Phân nhóm sinh viên (KMeans)")
+            st.markdown("### 5. Phân nhóm sinh viên (KMeans 3 nhóm)")
             scaler = StandardScaler()
-            scaled = scaler.fit_transform(df[numeric_cols].fillna(0))
+            scaled_data = scaler.fit_transform(df[numeric_cols].fillna(0))
             kmeans = KMeans(n_clusters=3, random_state=42, n_init=10)
-            df["Cluster"] = kmeans.fit_predict(scaled)
+            df["Cluster"] = kmeans.fit_predict(scaled_data)
             
-            fig_cluster = px.scatter(df, x="Điểm tổng hợp (đã quy đổi trọng số)", 
-                                   y="Thi cuối kỳ 50%", color="Cluster",
-                                   hover_data=["Họ và tên"], title="Phân nhóm sinh viên")
+            fig_cluster = px.scatter(df, 
+                                   x="Điểm tổng hợp (đã quy đổi trọng số)", 
+                                   y="Thi cuối kỳ 50%", 
+                                   color="Cluster",
+                                   hover_data=["Họ và tên", "Xếp Loại"],
+                                   title="Phân nhóm sinh viên theo điểm")
             st.plotly_chart(fig_cluster, use_container_width=True)
             
-            # 6. Anomaly
+            # 6. Anomaly Detection
             st.markdown("### 6. Phát hiện bất thường (Điểm = 0)")
-            anomaly_mask = (df[numeric_cols] == 0).any(axis=1)
-            anomalies = df[anomaly_mask]
-            if len(anomalies) > 0:
-                st.error(f"🚨 Phát hiện {len(anomalies)} sinh viên có điểm 0")
-                st.dataframe(anomalies[["STT", "Họ và tên", "Mã số sinh viên"] + numeric_cols])
+            anomaly = df[(df[numeric_cols] == 0).any(axis=1)]
+            if len(anomaly) > 0:
+                st.error(f"🚨 Có {len(anomaly)} sinh viên có điểm 0 (bất thường)")
+                st.dataframe(anomaly[["STT", "Họ và tên", "Mã số sinh viên"] + numeric_cols])
             else:
-                st.success("✅ Không có điểm bất thường (0)")
+                st.success("✅ Không phát hiện điểm bất thường (0)")
     
-    # Tab Tổng hợp
+    # ====================== TAB TỔNG HỢP ======================
     with tabs[-1]:
-        st.subheader("🔥 TỔNG HỢP TOÀN BỘ")
-        avg_class = full_df.groupby("Lớp")["Điểm tổng hợp (đã quy đổi trọng số)"].mean().round(2)
-        st.bar_chart(avg_class)
+        st.subheader("🔥 TỔNG HỢP TẤT CẢ CÁC LỚP")
         
-        st.markdown("### Insight Tổng Hợp (Dùng đi thi 💯)")
+        avg_by_class = full_df.groupby("Lớp")["Điểm tổng hợp (đã quy đổi trọng số)"].mean().round(2)
+        st.bar_chart(avg_by_class, use_container_width=True)
+        
+        st.markdown("### Insight Tổng Hợp (Quan trọng nhất - Dùng đi thi 💯)")
         st.markdown("""
-        **Các điểm quan trọng nhất:**
-        - **Thi cuối kỳ (50%)** và **Thảo luận/BTN/TT (20%)** là hai yếu tố ảnh hưởng mạnh nhất đến điểm tổng.
-        - Sinh viên có **điểm 0** ở bất kỳ thành phần nào → rất dễ bị kéo điểm xuống hoặc xếp loại thấp.
-        - **Chuyên cần** có tác động rõ rệt → đi học đều giúp tăng điểm dễ dàng.
-        - Toàn bộ có khoảng **40%** đạt Giỏi/Xuất sắc.
-        - **Lời khuyên**: Ưu tiên ôn **thi cuối kỳ** và làm tốt **bài tập nhóm/thảo luận**.
+        **🔥 Những insight quan trọng nhất:**
+        
+        1. **Thi cuối kỳ (50%)** và **Thảo luận - BTN - TT (20%)** là hai yếu tố **ảnh hưởng mạnh nhất** đến điểm tổng hợp.
+        
+        2. **Chuyên cần** có tương quan tốt → Đi học đầy đủ giúp tăng điểm dễ dàng.
+        
+        3. Sinh viên có **điểm 0** ở bất kỳ cột nào → rất dễ bị kéo điểm xuống hoặc xếp loại thấp.
+        
+        4. Toàn bộ các lớp có tỷ lệ **Giỏi / Xuất sắc** khoảng **40-45%** → cạnh tranh khá cao.
+        
+        5. **Lời khuyên thi cử:**
+           - Ưu tiên ôn thật kỹ **thi cuối kỳ**.
+           - Làm tốt **bài tập nhóm / thảo luận** (chiếm 20%).
+           - Không để điểm 0 ở bất kỳ phần nào.
+        
+        **Mục tiêu Xuất sắc:** Cần đạt ít nhất **9.0** ở cả Thảo luận + Thi cuối kỳ.
         """)
         
         st.balloons()
 
 else:
-    st.info("Vui lòng upload file ptdl.xlsx để phân tích")
+    st.info("👆 Vui lòng upload file **ptdl.xlsx** để bắt đầu phân tích")
