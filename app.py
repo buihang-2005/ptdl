@@ -146,7 +146,6 @@ with tab2:
         bot10 = df_filtered.nsmallest(10, score_col)[['Họ và tên', 'Lớp', score_col, 'Học lực']]
         st.dataframe(bot10.reset_index(drop=True), use_container_width=True)
 # ====================== TAB 3: TƯƠNG QUAN ======================
-# ====================== TAB 3: TƯƠNG QUAN ======================
 with tab3:
     st.header("📈 Tương quan giữa Điểm Cuối kỳ và Điểm Tổng hợp")
     
@@ -177,14 +176,13 @@ with tab3:
             color_discrete_sequence=['#1f4e79']
         )
        
-        # Hồi quy tuyến tính chỉ từ 0 đến 10
+        # Hồi quy tuyến tính chỉ từ 0 đến 13
         x_vals = df_filtered[score_col].values
         y_vals = df_filtered['Final'].values
         
         if len(x_vals) > 1:
             slope, intercept = np.polyfit(x_vals, y_vals, 1)
-            # Đường hồi quy chỉ vẽ trong khoảng 0-10
-            x_line = np.array([0, 10])
+            x_line = np.array([0, 13])          # Giới hạn hồi quy từ 0 đến 13
             y_line = slope * x_line + intercept
             
             scatter.add_trace(go.Scatter(
@@ -195,32 +193,30 @@ with tab3:
                 line=dict(color='#d62728', width=3.5)
             ))
        
-        # ================== BUỘC CHẶT CẢ HAI TRỤC TỪ 0 ĐẾN 10 ==================
+        # ================== BUỘC CHẶT GIÁ TRỊ TỪ 0 ĐẾN 13 ==================
         scatter.update_layout(
-            height=720,
-            width=720,
+            height=750,
+            width=750,
             plot_bgcolor='#f0f6ff',
             
-            # Trục X
             xaxis=dict(
                 title="Điểm Tổng hợp",
-                range=[0, 10],           # Chỉ từ 0 đến 10
+                range=[0, 13],                  # Từ 0 đến 13
                 dtick=1,
                 gridcolor='lightgray',
-                autorange=False,         # Ngăn tự động scale
+                autorange=False,                # Ngăn tự động scale
                 showline=True,
                 linewidth=1,
                 linecolor='#333'
             ),
             
-            # Trục Y - Đây là phần quan trọng nhất
             yaxis=dict(
                 title="Điểm Cuối kỳ (50%)",
-                range=[0, 10],           # ← BUỘC CHẶT từ 0 đến 10
+                range=[0, 13],                  # ← Từ 0 đến 13 (quan trọng)
                 dtick=1,
                 gridcolor='lightgray',
-                autorange=False,         # Ngăn Plotly tự mở rộng
-                scaleanchor="x",         # Giữ tỷ lệ X và Y bằng nhau
+                autorange=False,
+                scaleanchor="x",                # Giữ tỷ lệ gần bằng nhau
                 scaleratio=1,
                 showline=True,
                 linewidth=1,
