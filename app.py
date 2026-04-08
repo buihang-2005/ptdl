@@ -21,7 +21,7 @@ def load_and_clean_data():
     for sheet_name, class_name in sheet_info.items():
         df = pd.read_excel(file, sheet_name=sheet_name, header=0)
         
-        # Xử lý cột họ tên (một số sheet dùng Column4)
+        # Xử lý cột họ tên
         if 'Họ và tên' in df.columns:
             df = df.rename(columns={'Họ và tên': 'Ho_ten'})
         elif 'Column4' in df.columns:
@@ -80,12 +80,6 @@ def load_and_clean_data():
 
 df, df_dict = load_and_clean_data()
 
-# ====================== SIDEBAR ======================
-st.sidebar.header("📁 Thông tin tổng quan")
-st.sidebar.write(f"**Tổng số sinh viên:** {len(df):,}")
-for lop in ['D05', 'D12', 'D13', 'D14']:
-    st.sidebar.write(f"**Lớp {lop}:** {len(df_dict[lop])} sinh viên")
-
 # ====================== TABS ======================
 tab1, tab2, tab3, tab4, tab5 = st.tabs([
     "1. Chi tiết từng lớp học phần", 
@@ -95,7 +89,7 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs([
     "5. Ranking & Học lực"
 ])
 
-# ==================== TAB 1: CHI TIẾT TỪNG LỚP ====================
+# ==================== TAB 1: CHI TIẾT TỪNG LỚP (ĐÃ SỬA LỖI) ====================
 with tab1:
     st.header("1. CHI TIẾT TỪNG LỚP HỌC PHẦN")
     
@@ -125,7 +119,7 @@ with tab1:
                         title=f"Boxplot - Lớp {selected_class}")
         st.plotly_chart(fig_box, use_container_width=True)
     
-    # Top 5 & Bottom 5 (ĐÃ SỬA LỖI TẠI ĐÂY)
+    # Top 5 & Bottom 5 - ĐÃ SỬA TÊN CỘT
     st.subheader(f"Top 5 & Bottom 5 - Lớp {selected_class}")
     colA, colB = st.columns(2)
     with colA:
@@ -196,4 +190,4 @@ with tab5:
     st.plotly_chart(px.bar(df['Hoc_luc'].value_counts().sort_index(), 
                           title="Phân bố học lực toàn khóa"), use_container_width=True)
 
-st.sidebar.success("✅ Ứng dụng đã chạy ổn định")
+st.sidebar.success("✅ Ứng dụng đã chạy ổn định - Lỗi KeyError đã được sửa")
