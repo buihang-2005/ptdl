@@ -150,7 +150,6 @@ with tab2:
 with tab3:
     st.header("📈 Tương quan giữa Điểm Cuối kỳ và Điểm Tổng hợp")
     
-    # Phân chia layout: 2 cột
     col_a, col_b = st.columns([1, 1])
     
     with col_a:
@@ -160,13 +159,13 @@ with tab3:
         st.plotly_chart(pie, use_container_width=True)
     
     with col_b:
-        st.subheader("Biểu đồ phân tán ngang (Horizontal)")
+        st.subheader("Biểu đồ phân tán ngang")
         
-        # Biểu đồ phân tán QUAY NGANG
+        # Biểu đồ phân tán QUAY NGANG + giới hạn 0-10
         scatter = px.scatter(
             df_filtered,
-            x=score_col,                    # ← Đổi thành trục X (ngang)
-            y='Final',                      # ← Đổi thành trục Y (dọc)
+            x=score_col,           # Trục X ngang: Điểm Tổng hợp
+            y='Final',             # Trục Y dọc: Điểm Cuối kỳ
             hover_name='Họ và tên',
             hover_data=['Học lực', 'Lớp'],
             title="Tương quan Điểm Cuối kỳ ↔ Điểm Tổng hợp",
@@ -178,11 +177,11 @@ with tab3:
             color_discrete_sequence=['#1f4e79']
         )
        
-        # Thêm đường hồi quy tuyến tính (vẫn tính đúng)
-        x = df_filtered[score_col].values      # Final → Tổng hợp
+        # Thêm đường hồi quy tuyến tính
+        x = df_filtered[score_col].values
         y = df_filtered['Final'].values
         slope, intercept = np.polyfit(x, y, 1)
-        x_line = np.array([x.min()-0.5, x.max()+0.5])
+        x_line = np.array([0, 10])                    # Giới hạn từ 0 đến 10
         y_line = slope * x_line + intercept
        
         scatter.add_trace(go.Scatter(
@@ -193,12 +192,22 @@ with tab3:
             line=dict(color='#d62728', width=3.5)
         ))
        
-        # Cập nhật layout để biểu đồ đẹp hơn khi quay ngang
+        # Cập nhật layout: cố định scale 0-10 và cải thiện giao diện
         scatter.update_layout(
-            height=650, 
+            height=650,
             plot_bgcolor='#f0f6ff',
-            xaxis_title="Điểm Tổng hợp",
-            yaxis_title="Điểm Cuối kỳ (50%)"
+            xaxis=dict(
+                title="Điểm Tổng hợp",
+                range=[-0.5, 10.5],      # Hệ số từ 0 đến 10
+                dtick=1,
+                gridcolor='lightgray'
+            ),
+            yaxis=dict(
+                title="Điểm Cuối kỳ (50%)",
+                range=[-0.5, 10.5],      # Hệ số từ 0 đến 10
+                dtick=1,
+                gridcolor='lightgray'
+            )
         )
         
         st.plotly_chart(scatter, use_container_width=True)
