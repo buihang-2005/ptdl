@@ -91,9 +91,6 @@ st.sidebar.markdown("---")  # Dòng phân cách đẹp
 # Hiển thị logo HUB
 st.sidebar.image("hub_logo.png", use_container_width=True)
 
-# Thêm chú thích nhỏ (tùy chọn)
-st.sidebar.caption("HUB - 9/6")
-
 # ====================== TABS ======================
 tab1, tab2, tab3, tab4 = st.tabs([
     "📊 Thống kê & So sánh",
