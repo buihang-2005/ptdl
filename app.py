@@ -4,112 +4,85 @@ import numpy as np
 import plotly.express as px
 import os
 
-# Cấu hình trang
-st.set_page_config(page_title="Phân tích Kết quả Học tập", layout="wide")
+st.set_page_config(page_title="Hệ thống Phân tích AMA301", layout="wide")
 
 @st.cache_data
-def load_data():
-    # Lấy danh sách các file csv trong thư mục
-    all_files = [f for f in os.listdir('.') if f.endswith('.csv')]
-    if not all_files:
+def load_and_clean_data():
+    files = [f for f in os.listdir('.') if f.endswith('.csv')]
+    if not files:
         return pd.DataFrame()
 
-    combined_df = []
-    for file in all_files:
+    all_data = []
+    for file in files:
         try:
-            # Đọc file
             df = pd.read_csv(file)
             
-            # --- FIX LỖI TÊN CỘT KHÔNG ĐỒNG NHẤT ---
-            # Tạo bản đồ ánh xạ (Mapping) hỗ trợ cả chữ hoa và chữ thường
-            mapping = {
-                'Chuyên cần 10%': 'Attendance',
-                'Kiểm tra GK 20%': 'Midterm',
-                'Thảo luận, BTN, TT 20%': 'Assignment',
-                'Thi cuối kỳ 50%': 'Final',
-                'Điểm tổng hợp (đã quy đổi trọng số)': 'Total',
-                'Lớp sinh hoạt': 'Class',
-                'Xếp loại': 'Grade',
-                'Xếp Loại': 'Grade' # Sửa lỗi KeyError: 'Grade'
-            }
+            # 1. Xóa các cột trống hoàn toàn (unnamed) thường xuất hiện khi xuất từ Excel
+            df = df.loc[:, ~df.columns.str.contains('^Unnamed')]
+            
+            # 2. Chuẩn hóa tên cột: Chuyển tất cả về chữ thường, xóa khoảng trắng thừa
+            df.columns = df.columns.str.strip()
+            
+            # 3. Tạo bản đồ ánh xạ linh hoạt
+            # Chúng ta sẽ tìm các từ khóa xuất hiện trong tên cột
+            mapping = {}
+            for col in df.columns:
+                c_low = col.lower()
+                if 'chuyên cần' in c_low: mapping[col] = 'Attendance'
+                elif 'giữa kỳ' in c_low or 'gk' in c_low: mapping[col] = 'Midterm'
+                elif 'thảo luận' in c_low or 'btn' in c_low: mapping[col] = 'Assignment'
+                elif 'cuối kỳ' in c_low: mapping[col] = 'Final'
+                elif 'tổng hợp' in c_low: mapping[col] = 'Total'
+                elif 'lớp sinh hoạt' in c_low: mapping[col] = 'Class'
+                elif 'xếp loại' in c_low: mapping[col] = 'Grade' # Sửa lỗi này
+            
             df = df.rename(columns=mapping)
             
-            # Giữ lại các cột cần thiết nếu tồn tại
-            cols_to_keep = ['Mã số sinh viên', 'Họ và tên', 'Class', 'Attendance', 'Midterm', 'Assignment', 'Final', 'Total', 'Grade']
-            existing_cols = [c for c in cols_to_keep if c in df.columns]
-            df = df[existing_cols]
+            # Giữ lại các cột chính
+            valid_cols = ['Mã số sinh viên', 'Họ và tên', 'Class', 'Attendance', 'Midterm', 'Assignment', 'Final', 'Total', 'Grade']
+            df = df[[c for c in valid_cols if c in df.columns]]
             
-            # Chuyển đổi dữ liệu sang dạng số
-            num_cols = ['Attendance', 'Midterm', 'Assignment', 'Final', 'Total']
-            for col in num_cols:
-                if col in df.columns:
-                    df[col] = pd.to_numeric(df[col], errors='coerce')
+            # Chuyển đổi kiểu số
+            for c in ['Attendance', 'Midterm', 'Assignment', 'Final', 'Total']:
+                if c in df.columns:
+                    df[c] = pd.to_numeric(df[c], errors='coerce')
             
-            combined_df.append(df)
+            all_data.append(df)
         except Exception as e:
-            st.error(f"Lỗi khi đọc file {file}: {e}")
-            
-    if not combined_df:
-        return pd.DataFrame()
-        
-    full_df = pd.concat(combined_df, ignore_index=True)
-    full_df = full_df.dropna(subset=['Total']) # Loại bỏ dòng trống
+            st.error(f"Lỗi file {file}: {e}")
+
+    if not all_data: return pd.DataFrame()
     
-    # Tính toán thêm các chỉ số bổ trợ
-    full_df['Process'] = (full_df.get('Attendance', 0)*0.1 + full_df.get('Midterm', 0)*0.2 + full_df.get('Assignment', 0)*0.2) / 0.5
-    full_df['Diff'] = (full_df['Process'] - full_df.get('Final', 0)).abs()
+    full_df = pd.concat(all_data, ignore_index=True).dropna(subset=['Total'])
     
+    # Tính điểm quá trình (nếu thiếu thành phần thì coi như 0)
+    full_df['Process'] = (full_df.get('Attendance', 0)*0.1 + 
+                          full_df.get('Midterm', 0)*0.2 + 
+                          full_df.get('Assignment', 0)*0.2) / 0.5
     return full_df
 
-# Tải dữ liệu
-df = load_data()
+df = load_and_clean_data()
 
 if df.empty:
-    st.warning("⚠️ Không tìm thấy dữ liệu. Vui lòng kiểm tra các file CSV trong thư mục.")
+    st.error("Không có dữ liệu để hiển thị!")
     st.stop()
 
-# --- SIDEBAR: TƯƠNG TÁC ---
-st.sidebar.header("🕹️ Điều khiển")
-all_classes = ["Tất cả"] + sorted(df['Class'].dropna().unique().tolist())
-selected_class = st.sidebar.selectbox("Chọn lớp:", all_classes)
+# Giao diện
+st.title("📈 Phân tích Kết quả Học tập (Fixed Version)")
 
-filtered_df = df.copy()
-if selected_class != "Tất cả":
-    filtered_df = filtered_df[filtered_df['Class'] == selected_class]
+# Sidebar lọc
+classes = ["Tất cả"] + sorted(df['Class'].dropna().unique().tolist())
+sel_class = st.sidebar.selectbox("Chọn lớp", classes)
+filtered = df if sel_class == "Tất cả" else df[df['Class'] == sel_class]
 
-# --- HIỂN THỊ ---
-st.title("📊 Phân tích Kết quả Học tập AMA301")
-
-# 2. OVERVIEW
-st.header("2. Tổng quan")
-c1, c2, c3, c4 = st.columns(4)
-c1.metric("Tổng SV", len(filtered_df))
-c2.metric("Điểm TB", round(filtered_df['Total'].mean(), 2))
-c3.metric("Thấp nhất", filtered_df['Total'].min())
-c4.metric("Cao nhất", filtered_df['Total'].max())
-
-# 10. HỌC LỰC (Phần bị lỗi cũ)
-st.header("10. Phân loại Học lực")
-if 'Grade' in filtered_df.columns:
-    grade_data = filtered_df['Grade'].value_counts().reset_index()
-    grade_data.columns = ['Xếp loại', 'Số lượng']
-    fig_pie = px.pie(grade_data, names='Xếp loại', values='Số lượng', hole=0.4, title="Tỷ lệ học lực")
-    st.plotly_chart(fig_pie, use_container_width=True)
-else:
-    st.error("Không tìm thấy cột 'Xếp loại' trong dữ liệu.")
-
-# 6. CORRELATION (Mối quan hệ)
-st.header("6. Tương quan thành phần điểm")
-corr_cols = [c for c in ['Attendance', 'Midterm', 'Assignment', 'Final', 'Total'] if c in filtered_df.columns]
-corr = filtered_df[corr_cols].corr()
-st.plotly_chart(px.imshow(corr, text_auto=True, color_continuous_scale='RdBu_r'), use_container_width=True)
-
-# 12. HỆ THỐNG (Quá trình vs Cuối kỳ)
-st.header("12. Đánh giá Quá trình vs Cuối kỳ")
-fig_scatter = px.scatter(filtered_df, x="Process", y="Final", color="Grade" if 'Grade' in filtered_df.columns else None,
-                         hover_data=['Họ và tên'], title="So sánh điểm Quá trình và Cuối kỳ")
-st.plotly_chart(fig_scatter, use_container_width=True)
-
-# Hiển thị bảng dữ liệu lọc
-with st.expander("📝 Xem danh sách dữ liệu chi tiết"):
-    st.dataframe(filtered_df)
+# Hiển thị biểu đồ xếp loại (Mục 10 - Nơi bị lỗi)
+st.header("Phân loại Học lực")
+if 'Grade' in filtered.columns:
+    # Làm sạch dữ liệu cột Grade (xóa khoảng trắng, chuẩn hóa chữ)
+    filtered['Grade'] = filtered['Grade'].astype(str).str.strip()
+    grade_counts = filtered['Grade'].value_counts().reset_index()
+    grade_counts.columns = ['Xếp loại', 'Số lượng']
+    
+    fig = px.pie(grade_counts, names='Xếp loại', values='Số lượng', 
+                 hole=0.4, color='Xếp loại',
+                 color_discrete_map={'Xuất sắc':'gold', 'Giỏi':'green', 'Khá':'blue
