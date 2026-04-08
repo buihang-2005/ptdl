@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-import numpy as np
 
 st.set_page_config(page_title="Thống kê điểm AMA301", layout="wide")
 st.title("📊 Phân tích điểm môn AMA301 (2511_1)")
@@ -34,7 +33,7 @@ dfs = []
 for sheet_name, df in data.items():
     df = df.copy()
     
-    # Xử lý tên bị tách cột
+    # Xử lý tên bị tách thành nhiều cột
     if 'Họ và tên' not in df.columns and 'Column4' in df.columns:
         cols = df.columns.tolist()
         idx = cols.index('Column4')
@@ -55,6 +54,15 @@ for sheet_name, df in data.items():
 
 df_all = pd.concat(dfs, ignore_index=True)
 df_all = df_all.dropna(subset=[score_col]).reset_index(drop=True)
+
+# Tính Process (40%) và Final (50%)
+df_all['Process'] = (
+    df_all.get('Chuyên cần 10%', 0).fillna(0) * 0.1 +
+    df_all.get('Kiểm tra GK 20%', 0).fillna(0) * 0.2 +
+    df_all.get('Thảo luận, BTN, TT 20%', 0).fillna(0) * 0.2
+).round(2)
+
+df_all['Final'] = df_all.get('Thi cuối kỳ 50%', 0).fillna(0).round(2)
 
 # Tạo cột Học lực
 def get_hoc_luc(x):
@@ -91,7 +99,7 @@ else:
 tab1, tab2, tab3, tab4 = st.tabs([
     "📊 Thống kê & Biểu đồ", 
     "🏆 Top & Bottom", 
-    "📈 Tương quan & Học lực",
+    "📈 Tương quan & Phân tán",
     "📋 Dữ liệu thô"
 ])
 
@@ -99,7 +107,6 @@ tab1, tab2, tab3, tab4 = st.tabs([
 with tab1:
     if view_mode == "Chi tiết từng lớp":
         st.header(f"📋 Chi tiết lớp {selected_class} ({len(df_filtered)} sinh viên)")
-        
         st.subheader("Thống kê mô tả điểm tổng hợp")
         st.dataframe(df_filtered[score_col].describe().round(3), use_container_width=True)
         
@@ -140,51 +147,58 @@ with tab2:
         bottom10 = df_filtered.nsmallest(10, score_col)[['Họ và tên', 'Lớp', score_col, 'Học lực']]
         st.dataframe(bottom10.reset_index(drop=True), use_container_width=True)
 
-# ====================== TAB 3: TƯƠNG QUAN & HỌC LỰC (MỚI) ======================
+# ====================== TAB 3: TƯƠNG QUAN, PIE & PHÂN TÁN (MỚI) ======================
 with tab3:
-    st.header("📈 Tương quan điểm số & Phân bố học lực")
+    st.header("📈 Tương quan, Phân bố học lực & Biểu đồ phân tán")
     
-    col_left, col_right = st.columns([2, 1])
+    col_a, col_b = st.columns([1, 1])
     
-    with col_left:
-        st.subheader("Ma trận tương quan giữa các thành phần điểm")
-        
-        # Các cột điểm thành phần
-        corr_cols = ['Chuyên cần 10%', 'Kiểm tra GK 20%', 
-                    'Thảo luận, BTN, TT 20%', 'Thi cuối kỳ 50%', score_col]
-        
-        # Chỉ lấy các cột tồn tại
-        available_corr_cols = [col for col in corr_cols if col in df_filtered.columns]
-        
-        if len(available_corr_cols) > 1:
-            corr_matrix = df_filtered[available_corr_cols].corr().round(3)
-            fig_corr = px.imshow(corr_matrix, 
-                                text_auto=True,
-                                aspect="auto",
-                                color_continuous_scale='RdBu_r',
-                                title="Ma trận tương quan Pearson")
-            fig_corr.update_layout(height=600)
-            st.plotly_chart(fig_corr, use_container_width=True)
-        else:
-            st.warning("Không đủ dữ liệu thành phần để tính tương quan.")
-    
-    with col_right:
+    with col_a:
+        # Pie Chart - Học lực
         st.subheader("Tỷ lệ phân bố Học lực")
         pie_fig = px.pie(df_filtered, names='Học lực', 
-                        title="Tỷ lệ học lực",
+                        title="Tỷ lệ học lực toàn bộ",
                         color_discrete_sequence=px.colors.qualitative.Set3)
         st.plotly_chart(pie_fig, use_container_width=True)
-        
-        # Thống kê học lực theo lớp (nếu so sánh nhiều lớp)
-        if view_mode == "So sánh nhiều lớp":
-            st.subheader("Học lực theo lớp")
-            hoc_luc_by_class = pd.crosstab(df_filtered['Lớp'], df_filtered['Học lực'], normalize='index') * 100
-            st.dataframe(hoc_luc_by_class.round(1), use_container_width=True)
+    
+    with col_b:
+        # Scatter Plot - Process vs Final (Biểu đồ phân tán)
+        st.subheader("Biểu đồ phân tán: Process vs Final")
+        scatter_fig = px.scatter(
+            df_filtered,
+            x='Process',
+            y='Final',
+            color='Lớp',
+            size=score_col,
+            hover_data=['Họ và tên'],
+            title="Mối quan hệ giữa Điểm Quá trình và Điểm Cuối kỳ",
+            labels={'Process': 'Điểm Quá trình (40%)', 'Final': 'Điểm Cuối kỳ (50%)'}
+        )
+        scatter_fig.update_layout(height=550)
+        st.plotly_chart(scatter_fig, use_container_width=True)
+    
+    # Ma trận tương quan
+    st.subheader("Ma trận tương quan giữa các thành phần điểm")
+    corr_cols = ['Chuyên cần 10%', 'Kiểm tra GK 20%', 
+                 'Thảo luận, BTN, TT 20%', 'Thi cuối kỳ 50%', score_col]
+    available_corr_cols = [col for col in corr_cols if col in df_filtered.columns]
+    
+    if len(available_corr_cols) > 1:
+        corr_matrix = df_filtered[available_corr_cols].corr().round(3)
+        fig_corr = px.imshow(corr_matrix, 
+                            text_auto=True,
+                            aspect="auto",
+                            color_continuous_scale='RdBu_r',
+                            title="Ma trận tương quan Pearson")
+        fig_corr.update_layout(height=600)
+        st.plotly_chart(fig_corr, use_container_width=True)
+    else:
+        st.warning("Không đủ dữ liệu thành phần để tính tương quan.")
 
 # ====================== TAB 4: DỮ LIỆU THÔ ======================
 with tab4:
     st.header("📋 Dữ liệu thô (sắp xếp theo điểm giảm dần)")
-    display_cols = ['Họ và tên', 'Lớp', score_col, 'Học lực']
+    display_cols = ['Họ và tên', 'Lớp', score_col, 'Process', 'Final', 'Học lực']
     component_cols = ['Chuyên cần 10%', 'Kiểm tra GK 20%', 'Thảo luận, BTN, TT 20%', 'Thi cuối kỳ 50%']
     for col in component_cols:
         if col in df_filtered.columns:
