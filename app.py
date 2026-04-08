@@ -73,6 +73,7 @@ df_all['Học lực'] = df_all[score_col].apply(get_hoc_luc)
 
 # ====================== SIDEBAR ======================
 st.sidebar.header("🔍 Bộ lọc")
+
 view_mode = st.sidebar.radio("Chế độ xem:", ["Chi tiết từng lớp", "So sánh nhiều lớp"])
 
 if view_mode == "Chi tiết từng lớp":
@@ -83,6 +84,15 @@ else:
                                              sorted(df_all['Lớp'].unique()),
                                              default=sorted(df_all['Lớp'].unique()))
     df_filtered = df_all[df_all['Lớp'].isin(selected_classes)].copy()
+
+# ====================== THÊM LOGO HUB DƯỚI BỘ LỌC ======================
+st.sidebar.markdown("---")  # Dòng phân cách đẹp
+
+# Hiển thị logo HUB
+st.sidebar.image("hub_logo.png", use_container_width=True)
+
+# Thêm chú thích nhỏ (tùy chọn)
+st.sidebar.caption("HUB - 9/6")
 
 # ====================== TABS ======================
 tab1, tab2, tab3, tab4 = st.tabs([
