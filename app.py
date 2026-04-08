@@ -21,12 +21,13 @@ def load_and_clean_data():
     for sheet_name, class_name in sheet_info.items():
         df = pd.read_excel(file, sheet_name=sheet_name, header=0)
         
-        # Xử lý cột họ tên
+        # Xử lý cột Họ tên (một số sheet dùng Column4)
         if 'Họ và tên' in df.columns:
             df = df.rename(columns={'Họ và tên': 'Ho_ten'})
         elif 'Column4' in df.columns:
             df = df.rename(columns={'Column4': 'Ho_ten'})
         
+        # Rename các cột điểm
         rename_dict = {
             'Lớp sinh hoạt': 'Lop',
             'Chuyên cần 10%': 'Chuyen_can',
@@ -39,16 +40,18 @@ def load_and_clean_data():
         }
         df = df.rename(columns=rename_dict)
         
+        # Giữ các cột có sẵn
         keep_cols = ['Ho_ten', 'Lop', 'Chuyen_can', 'GK', 'Qua_trinh', 'Cuoi_ky', 'Diem_tong', 'Xep_loai']
         df = df[[col for col in keep_cols if col in df.columns]].copy()
         
-        # Ép kiểu số
+        # Ép kiểu số an toàn
         for col in ['Chuyen_can', 'GK', 'Qua_trinh', 'Cuoi_ky', 'Diem_tong']:
             if col in df.columns:
                 df[col] = pd.to_numeric(df[col], errors='coerce')
         
-        # Loại bỏ dòng rác (Pivot Table)
-        df = df.dropna(subset=['Diem_tong'], how='all')
+        # Loại bỏ dòng rác từ Pivot Table
+        if 'Diem_tong' in df.columns:
+            df = df.dropna(subset=['Diem_tong'], how='all')
         df = df[~df['Ho_ten'].astype(str).str.contains('Row Labels|Grand Total|TOP 5|Average|Count', na=False, case=False)]
         
         df['Lop_hoc_phan'] = class_name
@@ -56,12 +59,12 @@ def load_and_clean_data():
     
     df_full = pd.concat(dfs.values(), ignore_index=True)
     
-    # Tạo biến mới
-    df_full['Process'] = (df_full.get('Chuyen_can', 0).fillna(0)*0.1 + 
-                          df_full.get('GK', 0).fillna(0)*0.2 + 
-                          df_full.get('Qua_trinh', 0).fillna(0)*0.2).round(2)
+    # Tạo biến mới an toàn
+    df_full['Process'] = (df_full.get('Chuyen_can', pd.Series(0)).fillna(0)*0.1 + 
+                          df_full.get('GK', pd.Series(0)).fillna(0)*0.2 + 
+                          df_full.get('Qua_trinh', pd.Series(0)).fillna(0)*0.2).round(2)
     
-    df_full['Final'] = df_full.get('Cuoi_ky', 0).fillna(0).round(2)
+    df_full['Final'] = df_full.get('Cuoi_ky', pd.Series(0)).fillna(0).round(2)
     df_full['Diff'] = (df_full['Process'] - df_full['Final']).round(2)
     df_full['Abs_Diff'] = abs(df_full['Diff'])
     
@@ -89,7 +92,7 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs([
     "5. Ranking & Học lực"
 ])
 
-# ==================== TAB 1: CHI TIẾT TỪNG LỚP (KHÔNG DÙNG BOXPLOT) ====================
+# ==================== TAB 1: CHI TIẾT TỪNG LỚP (AN TOÀN) ====================
 with tab1:
     st.header("1. CHI TIẾT TỪNG LỚP HỌC PHẦN")
     
@@ -103,28 +106,37 @@ with tab1:
     
     st.subheader(f"📌 Lớp {selected_class} — {len(df_selected)} sinh viên")
     
-    # Thống kê mô tả
-    stats = df_selected['Diem_tong'].describe().round(2)
-    st.dataframe(stats, use_container_width=True)
+    # Thống kê
+    if 'Diem_tong' in df_selected.columns and not df_selected['Diem_tong'].isna().all():
+        stats = df_selected['Diem_tong'].describe().round(2)
+        st.dataframe(stats, use_container_width=True)
+        
+        # Histogram
+        st.subheader("Histogram phân bố điểm")
+        fig_hist = px.histogram(df_selected, x='Diem_tong', nbins=15,
+                               title=f"Phân bố điểm tổng - Lớp {selected_class}",
+                               color_discrete_sequence=['#636EFA'])
+        st.plotly_chart(fig_hist, use_container_width=True)
+    else:
+        st.warning(f"Lớp {selected_class} không có dữ liệu điểm tổng hợp.")
     
-    # Chỉ giữ Histogram (đã bỏ Boxplot)
-    st.subheader("Histogram phân bố điểm")
-    fig_hist = px.histogram(df_selected, x='Diem_tong', nbins=15,
-                           title=f"Phân bố điểm tổng - Lớp {selected_class}",
-                           color_discrete_sequence=['#636EFA'])
-    st.plotly_chart(fig_hist, use_container_width=True)
-    
-    # Top 5 & Bottom 5
+    # Top 5 & Bottom 5 (an toàn)
     st.subheader(f"Top 5 & Bottom 5 - Lớp {selected_class}")
     colA, colB = st.columns(2)
     with colA:
         st.write("**🏆 Top 5 cao nhất**")
-        top5 = df_selected.nlargest(5, 'Diem_tong')[['Ho_ten', 'Diem_tong', 'Hoc_luc']]
-        st.dataframe(top5, use_container_width=True)
+        if 'Diem_tong' in df_selected.columns:
+            top5 = df_selected.nlargest(5, 'Diem_tong')[['Ho_ten', 'Diem_tong', 'Hoc_luc']].fillna("-")
+            st.dataframe(top5, use_container_width=True)
+        else:
+            st.write("Không có dữ liệu")
     with colB:
         st.write("**📉 Bottom 5 thấp nhất**")
-        bottom5 = df_selected.nsmallest(5, 'Diem_tong')[['Ho_ten', 'Diem_tong', 'Hoc_luc']]
-        st.dataframe(bottom5, use_container_width=True)
+        if 'Diem_tong' in df_selected.columns:
+            bottom5 = df_selected.nsmallest(5, 'Diem_tong')[['Ho_ten', 'Diem_tong', 'Hoc_luc']].fillna("-")
+            st.dataframe(bottom5, use_container_width=True)
+        else:
+            st.write("Không có dữ liệu")
 
 # ==================== TAB 2: SO SÁNH 4 LỚP ====================
 with tab2:
@@ -136,11 +148,11 @@ with tab2:
     comparison.columns = ['Số SV', 'Điểm TB', 'Trung vị', 'Độ lệch chuẩn', 'Thấp nhất', 'Cao nhất']
     
     st.dataframe(comparison.sort_values('Điểm TB', ascending=False), use_container_width=True)
-    
+
     col1, col2 = st.columns(2)
     with col1:
         fig = px.bar(comparison.reset_index(), x='Lop_hoc_phan', y='Điểm TB',
-                    title="Điểm trung bình theo lớp học phần", color='Điểm TB', text='Điểm TB')
+                    title="Điểm trung bình theo lớp", color='Điểm TB', text='Điểm TB')
         fig.update_traces(texttemplate='%{text:.2f}')
         st.plotly_chart(fig, use_container_width=True)
     
@@ -153,9 +165,9 @@ with tab3:
     st.header("3. OVERVIEW TỔNG THỂ")
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("Tổng SV", len(df))
-    c2.metric("Điểm TB", f"{df['Diem_tong'].mean():.2f}")
-    c3.metric("Trung vị", f"{df['Diem_tong'].median():.2f}")
-    c4.metric("Std", f"{df['Diem_tong'].std():.2f}")
+    c2.metric("Điểm TB", f"{df['Diem_tong'].mean():.2f}" if not df['Diem_tong'].isna().all() else "N/A")
+    c3.metric("Trung vị", f"{df['Diem_tong'].median():.2f}" if not df['Diem_tong'].isna().all() else "N/A")
+    c4.metric("Std", f"{df['Diem_tong'].std():.2f}" if not df['Diem_tong'].isna().all() else "N/A")
 
     colA, colB = st.columns(2)
     with colA:
@@ -185,4 +197,4 @@ with tab5:
     st.plotly_chart(px.bar(df['Hoc_luc'].value_counts().sort_index(), 
                           title="Phân bố học lực toàn khóa"), use_container_width=True)
 
-st.sidebar.success("✅ Đã sửa lỗi & bỏ Boxplot ở phần chi tiết từng lớp")
+st.sidebar.success("✅ Lỗi đã được sửa - Code an toàn hơn")
