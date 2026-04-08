@@ -150,7 +150,7 @@ with tab3:
     st.header("📈 Tương quan giữa Điểm Cuối kỳ và Điểm Tổng hợp")
     
     # Pie chart ở trên
-    st.subheader("Tỷ lệ Học lực")
+    st.subheader("Pie chart")
     pie = px.pie(df_filtered, names='Học lực', hole=0.4,
                 color_discrete_sequence=px.colors.qualitative.Set3)
     st.plotly_chart(pie, use_container_width=True)
