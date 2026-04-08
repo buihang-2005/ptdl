@@ -90,12 +90,6 @@ tab1, tab2, tab3, tab4 = st.tabs([
     "🏆 Top & Bottom",
     "📈 Tương quan",                    # ← Đã gộp 2 tab cũ thành 1
     "📋 Dữ liệu thô"
-# ====================== TABS ======================
-tab1, tab2, tab3, tab4 = st.tabs([
-    "📊 Thống kê & So sánh",
-    "🏆 Top & Bottom",
-    "📈 Tương quan",                    # ← Đã gộp 2 tab cũ thành 1
-    "📋 Dữ liệu thô"
 ])
 
 # ====================== TAB 1: THỐNG KÊ & SO SÁNH ======================
@@ -151,89 +145,52 @@ with tab2:
         st.subheader("Bottom 10 thấp nhất")
         bot10 = df_filtered.nsmallest(10, score_col)[['Họ và tên', 'Lớp', score_col, 'Học lực']]
         st.dataframe(bot10.reset_index(drop=True), use_container_width=True)
-# ====================== TAB 3: TƯƠNG QUAN ======================
+
+# ====================== TAB 3: TƯƠNG QUAN (ĐÃ GỘP) ======================
 with tab3:
     st.header("📈 Tương quan giữa Điểm Cuối kỳ và Điểm Tổng hợp")
     
-    # Pie chart ở trên
-    st.subheader("Pie chart")
-    pie = px.pie(df_filtered, names='Học lực', hole=0.4,
-                color_discrete_sequence=px.colors.qualitative.Set3)
-    st.plotly_chart(pie, use_container_width=True)
-
-    # Scatter chart ở dưới
-    st.subheader("Scatter Chart")
+    # Phân chia layout: 2 cột
+    col_a, col_b = st.columns([1, 1])
     
-    # Tạo biểu đồ scatter
-    scatter = px.scatter(
-        df_filtered,
-        x=score_col,
-        y='Final',
-        hover_name='Họ và tên',
-        hover_data=['Học lực', 'Lớp'],
-        title="Tương quan Điểm Cuối kỳ ↔ Điểm Tổng hợp",
-        labels={
-            score_col: 'Điểm Tổng hợp',
-            'Final': 'Điểm Cuối kỳ (50%)'
-        },
-        opacity=0.85,
-        color_discrete_sequence=['#1f4e79']
-    )
-   
-    # Hồi quy tuyến tính chỉ từ 0 đến 10
-    x_vals = df_filtered[score_col].values
-    y_vals = df_filtered['Final'].values
+    with col_a:
+        st.subheader("Tỷ lệ Học lực")
+        pie = px.pie(df_filtered, names='Học lực', hole=0.4,
+                    color_discrete_sequence=px.colors.qualitative.Set3)
+        st.plotly_chart(pie, use_container_width=True)
     
-    if len(x_vals) > 1:
-        slope, intercept = np.polyfit(x_vals, y_vals, 1)
-        x_line = np.array([0, 10])
-        y_line = slope * x_line + intercept
-        
-        scatter.add_trace(go.Scatter(
-            x=x_line, 
-            y=y_line, 
-            mode='lines',
-            name='Hồi quy tuyến tính',
-            line=dict(color='#d62728', width=3.5)
-        ))
-   
-    # ================== PHÓNG TO MÔ HÌNH - CẮT NGẮN TRỤC X TỪ 0 ĐẾN 10 ==================
-    scatter.update_layout(
-        height=720,                         # Tăng chiều cao để phóng to
-        plot_bgcolor='#f0f6ff',
-        
-        xaxis=dict(
-            title="Điểm Tổng hợp",
-            range=[0, 10],                  # ← Cắt ngắn trục X từ 0 đến 10 (phóng to)
-            dtick=1,
-            gridcolor='lightgray',
-            autorange=False,
-            showline=True,
-            linewidth=1,
-            linecolor='#333'
-        ),
-        
-        yaxis=dict(
-            title="Điểm Cuối kỳ (50%)",
-            range=[0, 10],
-            dtick=1,
-            gridcolor='lightgray',
-            autorange=False,
-            scaleanchor="x",                # Giữ tỷ lệ cân đối
-            scaleratio=1,
-            showline=True,
-            linewidth=1,
-            linecolor='#333'
+    with col_b:
+        st.subheader("Biểu đồ phân tán + Hồi quy")
+        scatter = px.scatter(
+            df_filtered,
+            x='Final',
+            y=score_col,
+            hover_name='Họ và tên',
+            hover_data=['Học lực', 'Lớp'],
+            title="Tương quan Điểm Cuối kỳ → Điểm Tổng hợp",
+            labels={'Final': 'Điểm Cuối kỳ (50%)', score_col: 'Điểm Tổng hợp'},
+            opacity=0.85,
+            color_discrete_sequence=['#1f4e79']
         )
-    )
-    
-    st.plotly_chart(scatter, use_container_width=True)
+       
+        # Thêm đường hồi quy tuyến tính
+        x = df_filtered['Final'].values
+        y = df_filtered[score_col].values
+        slope, intercept = np.polyfit(x, y, 1)
+        x_line = np.array([x.min()-0.5, x.max()+0.5])
+        y_line = slope * x_line + intercept
+       
+        scatter.add_trace(go.Scatter(x=x_line, y=y_line, mode='lines',
+                                    name='Hồi quy tuyến tính',
+                                    line=dict(color='#d62728', width=3.5)))
+       
+        scatter.update_layout(height=620, plot_bgcolor='#f0f6ff')
+        st.plotly_chart(scatter, use_container_width=True)
    
-    # Hiển thị hệ số tương quan
     corr_value = df_filtered['Final'].corr(df_filtered[score_col]).round(4)
-    st.success(f"**Hệ số tương quan Pearson (r) = {corr_value}**")
+    st.success(f"**Hệ số tương quan (r) = {corr_value}**")
 
-    # Ma trận tương quan Pearson
+    # ==================== Phần Ma trận Tương quan Pearson ====================
     st.divider()
     st.subheader("🔢 Ma trận tương quan Pearson")
 
@@ -245,6 +202,7 @@ with tab3:
     if len(available_cols) > 1:
         corr_matrix = df_filtered[available_cols].corr().round(3)
        
+        # Đổi tên ngắn gọn cho dễ nhìn
         short_names = {
             'Chuyên cần 10%': 'CC',
             'Kiểm tra GK 20%': 'GK',
@@ -268,6 +226,7 @@ with tab3:
         st.caption("**Hình: Ma trận tương quan Pearson giữa các thành phần điểm**")
     else:
         st.warning("Không đủ dữ liệu để tạo ma trận tương quan.")
+
 # ====================== TAB 4: Dữ liệu thô ======================
 with tab4:
     st.header("📋 Dữ liệu thô")
