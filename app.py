@@ -147,9 +147,9 @@ with tab2:
         bottom10 = df_filtered.nsmallest(10, score_col)[['Họ và tên', 'Lớp', score_col, 'Học lực']]
         st.dataframe(bottom10.reset_index(drop=True), use_container_width=True)
 
-# ====================== TAB 3: TƯƠNG QUAN & PHÂN TÁN (MÀU ĐẸP) ======================
+# ====================== TAB 3: TƯƠNG QUAN GIỮA ĐIỂM CUỐI KỲ VÀ ĐIỂM TỔNG ======================
 with tab3:
-    st.header("📈 Tương quan, Phân bố học lực & Biểu đồ phân tán")
+    st.header("📈 Tương quan giữa Điểm Cuối kỳ và Điểm Tổng hợp")
     
     col_a, col_b = st.columns([1, 1])
     
@@ -162,27 +162,27 @@ with tab3:
         st.plotly_chart(pie_fig, use_container_width=True)
     
     with col_b:
-        st.subheader("Biểu đồ phân tán: Process vs Final")
+        st.subheader("Biểu đồ phân tán: Điểm Cuối kỳ vs Điểm Tổng hợp")
         
         scatter_fig = px.scatter(
             df_filtered,
-            x='Process',
-            y='Final',
+            x='Final',
+            y=score_col,                       # Điểm Tổng hợp
             hover_name='Họ và tên',
-            hover_data=['Học lực', 'Lớp'],
-            title="Mối quan hệ giữa Điểm Quá trình và Điểm Cuối kỳ",
+            hover_data=['Học lực', 'Lớp', 'Process'],
+            title="Tương quan giữa Điểm Cuối kỳ và Điểm Tổng hợp",
             labels={
-                'Process': 'Điểm Quá trình (40%)',
-                'Final': 'Điểm Cuối kỳ (50%)'
+                'Final': 'Điểm Cuối kỳ (50%)',
+                score_col: 'Điểm Tổng hợp'
             },
             opacity=0.85,
-            color_discrete_sequence=['#1f4e79']   # Xanh navy đậm - đẹp và chuyên nghiệp
+            color_discrete_sequence=['#1f4e79']   # Xanh navy đậm
         )
         
-        # Thêm đường hồi quy màu đỏ nổi bật
+        # Thêm đường hồi quy tuyến tính (màu đỏ nổi bật)
         import numpy as np
-        x = df_filtered['Process'].values
-        y = df_filtered['Final'].values
+        x = df_filtered['Final'].values
+        y = df_filtered[score_col].values
         slope, intercept = np.polyfit(x, y, 1)
         x_line = np.array([x.min() - 0.5, x.max() + 0.5])
         y_line = slope * x_line + intercept
@@ -192,8 +192,8 @@ with tab3:
                 x=x_line,
                 y=y_line,
                 mode='lines',
-                name='Đường hồi quy tuyến tính',
-                line=dict(color='#d62728', width=3.5)   # Đỏ cam nổi bật
+                name='Đường hồi quy',
+                line=dict(color='#d62728', width=3.5)
             )
         )
         
@@ -201,37 +201,36 @@ with tab3:
         scatter_fig.update_traces(
             marker=dict(
                 size=11,
-                line=dict(width=1.2, color='white')   # Viền trắng tăng độ nổi
+                line=dict(width=1.2, color='white')
             )
         )
         
         scatter_fig.update_layout(
             height=650,
-            plot_bgcolor='#f0f6ff',      # Nền xanh nhạt nhẹ
+            plot_bgcolor='#f0f6ff',
             paper_bgcolor='white',
             xaxis=dict(
                 gridcolor='#e0e0e0',
                 zeroline=False,
-                title_font=dict(size=14, color='#2c3e50')
+                title_font=dict(size=14)
             ),
             yaxis=dict(
                 gridcolor='#e0e0e0',
                 zeroline=False,
-                title_font=dict(size=14, color='#2c3e50')
+                title_font=dict(size=14)
             ),
             font=dict(family="Arial", size=13),
-            legend=dict(
-                yanchor="top", 
-                y=0.99, 
-                xanchor="left", 
-                x=0.01,
-                bgcolor="rgba(255,255,255,0.9)"
-            )
+            legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01, bgcolor="rgba(255,255,255,0.9)")
         )
         
         st.plotly_chart(scatter_fig, use_container_width=True)
     
-    # Ma trận tương quan
+    # Hiển thị hệ số tương quan (r)
+    correlation = df_filtered['Final'].corr(df_filtered[score_col]).round(4)
+    st.success(f"**Hệ số tương quan Pearson (r) giữa Điểm Cuối kỳ và Điểm Tổng hợp: {correlation}**")
+    st.caption("Giá trị càng gần 1 càng cho thấy mối quan hệ tuyến tính mạnh.")
+
+    # Ma trận tương quan (giữ nguyên để tham khảo)
     st.subheader("Ma trận tương quan giữa các thành phần điểm")
     corr_cols = ['Chuyên cần 10%', 'Kiểm tra GK 20%', 
                  'Thảo luận, BTN, TT 20%', 'Thi cuối kỳ 50%', score_col]
@@ -246,8 +245,6 @@ with tab3:
                             title="Ma trận tương quan Pearson")
         fig_corr.update_layout(height=580)
         st.plotly_chart(fig_corr, use_container_width=True)
-    else:
-        st.info("Không đủ dữ liệu thành phần điểm để tính tương quan.")
 # ====================== TAB 4: DỮ LIỆU THÔ ======================
 with tab4:
     st.header("📋 Dữ liệu thô (sắp xếp theo điểm giảm dần)")
