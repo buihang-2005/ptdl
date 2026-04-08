@@ -147,7 +147,7 @@ with tab2:
         bottom10 = df_filtered.nsmallest(10, score_col)[['Họ và tên', 'Lớp', score_col, 'Học lực']]
         st.dataframe(bottom10.reset_index(drop=True), use_container_width=True)
 
-# ====================== TAB 3: TƯƠNG QUAN & PHÂN TÁN (ĐÃ FIX) ======================
+# ====================== TAB 3: TƯƠNG QUAN & PHÂN TÁN (GIỐNG MẪU) ======================
 with tab3:
     st.header("📈 Tương quan, Phân bố học lực & Biểu đồ phân tán")
     
@@ -164,43 +164,73 @@ with tab3:
     with col_b:
         st.subheader("Biểu đồ phân tán: Process vs Final")
         
+        # Biểu đồ phân tán giống mẫu bạn gửi
         scatter_fig = px.scatter(
             df_filtered,
             x='Process',
             y='Final',
-            color='Lớp',
-            size=score_col,
             hover_name='Họ và tên',
-            hover_data=['Học lực'],
+            hover_data=['Học lực', 'Lớp'],
             title="Mối quan hệ giữa Điểm Quá trình và Điểm Cuối kỳ",
             labels={
                 'Process': 'Điểm Quá trình (40%)',
                 'Final': 'Điểm Cuối kỳ (50%)'
             },
             opacity=0.85,
-            color_discrete_sequence=px.colors.qualitative.Bold
+            color_discrete_sequence=['#1f4e79']   # Màu xanh đậm giống mẫu
         )
         
-        # Thêm đường hồi quy thủ công (để tránh lỗi trendline_scope)
-        scatter_fig.update_layout(
-            height=620,
-            legend_title="Lớp",
-            plot_bgcolor='rgba(245,245,245,0.9)',
-            xaxis=dict(gridcolor='lightgray'),
-            yaxis=dict(gridcolor='lightgray')
-        )
-        
+        # Thêm đường hồi quy tuyến tính màu đỏ
         scatter_fig.update_traces(
             marker=dict(
-                line=dict(width=0.6, color='DarkSlateGrey'),
-                sizeref=0.12,
-                sizemin=6
+                size=10,
+                line=dict(width=0.8, color='DarkSlateGrey')
             )
+        )
+        
+        # Thêm trendline (đường hồi quy)
+        from plotly.graph_objects import Figure
+        # Tính hồi quy thủ công để thêm đường đỏ
+        import numpy as np
+        x = df_filtered['Process']
+        y = df_filtered['Final']
+        slope, intercept = np.polyfit(x, y, 1)
+        x_line = np.array([x.min(), x.max()])
+        y_line = slope * x_line + intercept
+        
+        scatter_fig.add_trace(
+            go.Scatter(
+                x=x_line,
+                y=y_line,
+                mode='lines',
+                name='Đường hồi quy',
+                line=dict(color='red', width=3)
+            )
+        )
+        
+        # Cải thiện giao diện giống mẫu
+        scatter_fig.update_layout(
+            height=650,
+            plot_bgcolor='#f0f6ff',        # Nền xanh nhạt
+            paper_bgcolor='#f8fbff',
+            xaxis=dict(
+                gridcolor='lightgray',
+                zeroline=False,
+                title_font=dict(size=14)
+            ),
+            yaxis=dict(
+                gridcolor='lightgray',
+                zeroline=False,
+                title_font=dict(size=14)
+            ),
+            font=dict(family="Arial", size=12),
+            showlegend=True,
+            legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01)
         )
         
         st.plotly_chart(scatter_fig, use_container_width=True)
     
-    # Ma trận tương quan
+    # Ma trận tương quan giữ nguyên
     st.subheader("Ma trận tương quan giữa các thành phần điểm")
     corr_cols = ['Chuyên cần 10%', 'Kiểm tra GK 20%', 
                  'Thảo luận, BTN, TT 20%', 'Thi cuối kỳ 50%', score_col]
@@ -215,8 +245,6 @@ with tab3:
                             title="Ma trận tương quan Pearson")
         fig_corr.update_layout(height=580)
         st.plotly_chart(fig_corr, use_container_width=True)
-    else:
-        st.info("Không đủ dữ liệu thành phần điểm để tính tương quan.")
 
 # ====================== TAB 4: DỮ LIỆU THÔ ======================
 with tab4:
