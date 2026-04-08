@@ -89,7 +89,10 @@ else:
 st.sidebar.markdown("---")  # Dòng phân cách đẹp
 
 # Hiển thị logo HUB
-st.sidebar.image("hub_logo.png", use_container_width=True)
+# Logo căn giữa và nhỏ hơn một chút
+col1, col2, col3 = st.sidebar.columns([1, 2, 1])
+with col2:
+    st.image("hub_logo.png", use_container_width=True)
 
 # ====================== TABS ======================
 tab1, tab2, tab3, tab4 = st.tabs([
