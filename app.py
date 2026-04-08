@@ -159,13 +159,13 @@ with tab3:
         st.plotly_chart(pie, use_container_width=True)
     
     with col_b:
-        st.subheader("Biểu đồ phân tán ngang")
+        st.subheader("Biểu đồ phân tán ngang (tỷ lệ X-Y bằng nhau)")
         
-        # Biểu đồ phân tán QUAY NGANG + giới hạn 0-10
+        # Biểu đồ phân tán QUAY NGANG + scale X và Y bằng nhau
         scatter = px.scatter(
             df_filtered,
-            x=score_col,           # Trục X ngang: Điểm Tổng hợp
-            y='Final',             # Trục Y dọc: Điểm Cuối kỳ
+            x=score_col,           # Trục X: Điểm Tổng hợp
+            y='Final',             # Trục Y: Điểm Cuối kỳ
             hover_name='Họ và tên',
             hover_data=['Học lực', 'Lớp'],
             title="Tương quan Điểm Cuối kỳ ↔ Điểm Tổng hợp",
@@ -178,10 +178,10 @@ with tab3:
         )
        
         # Thêm đường hồi quy tuyến tính
-        x = df_filtered[score_col].values
-        y = df_filtered['Final'].values
-        slope, intercept = np.polyfit(x, y, 1)
-        x_line = np.array([0, 10])                    # Giới hạn từ 0 đến 10
+        x_vals = df_filtered[score_col].values
+        y_vals = df_filtered['Final'].values
+        slope, intercept = np.polyfit(x_vals, y_vals, 1)
+        x_line = np.array([0, 10])
         y_line = slope * x_line + intercept
        
         scatter.add_trace(go.Scatter(
@@ -192,21 +192,25 @@ with tab3:
             line=dict(color='#d62728', width=3.5)
         ))
        
-        # Cập nhật layout: cố định scale 0-10 và cải thiện giao diện
+        # === QUAN TRỌNG: Làm cho scale X và Y bằng nhau (biểu đồ vuông) ===
         scatter.update_layout(
-            height=650,
+            height=680,                       # Chiều cao cố định
+            width=680,                        # Chiều rộng = chiều cao → vuông
             plot_bgcolor='#f0f6ff',
             xaxis=dict(
                 title="Điểm Tổng hợp",
-                range=[-0.5, 10.5],      # Hệ số từ 0 đến 10
+                range=[-0.3, 10.3],
                 dtick=1,
-                gridcolor='lightgray'
+                gridcolor='lightgray',
+                constrain='domain'            # Giữ tỷ lệ
             ),
             yaxis=dict(
                 title="Điểm Cuối kỳ (50%)",
-                range=[-0.5, 10.5],      # Hệ số từ 0 đến 10
+                range=[-0.3, 10.3],
                 dtick=1,
-                gridcolor='lightgray'
+                gridcolor='lightgray',
+                scaleanchor="x",              # Neo trục Y theo trục X
+                scaleratio=1                  # Tỷ lệ 1:1 → X và Y bằng nhau
             )
         )
         
