@@ -176,7 +176,7 @@ with tab3:
             color_discrete_sequence=['#1f4e79']
         )
        
-        # Hồi quy tuyến tính chỉ vẽ trong khoảng 0 - 10
+        # Hồi quy tuyến tính chỉ từ 0 đến 10
         x_vals = df_filtered[score_col].values
         y_vals = df_filtered['Final'].values
         
@@ -193,15 +193,15 @@ with tab3:
                 line=dict(color='#d62728', width=3.5)
             ))
        
-        # ================== THU NHỎ TRỤC Y CHỈ TỪ 0 ĐẾN 10 ==================
+        # ================== RANGE CẢ HAI TRỤC TỪ 0 ĐẾN 10 ==================
         scatter.update_layout(
             height=720,
-            width=720,
+            width=720,                          # Vuông để cân đối
             plot_bgcolor='#f0f6ff',
             
             xaxis=dict(
                 title="Điểm Tổng hợp",
-                range=[0, 13],                  # Trục X giữ nguyên 0-13 (theo dữ liệu)
+                range=[0, 10],                  # ← Trục X từ 0 đến 10
                 dtick=1,
                 gridcolor='lightgray',
                 autorange=False,
@@ -212,11 +212,11 @@ with tab3:
             
             yaxis=dict(
                 title="Điểm Cuối kỳ (50%)",
-                range=[0, 10],                  # ← THU NHỎ CHỈ TỪ 0 ĐẾN 10
+                range=[0, 10],                  # ← Trục Y từ 0 đến 10
                 dtick=1,
                 gridcolor='lightgray',
-                autorange=False,                # Buộc không tự mở rộng
-                scaleanchor="x",                # Giữ tỷ lệ
+                autorange=False,
+                scaleanchor="x",                # Giữ tỷ lệ X và Y bằng nhau
                 scaleratio=1,
                 showline=True,
                 linewidth=1,
@@ -265,7 +265,6 @@ with tab3:
         st.caption("**Hình: Ma trận tương quan Pearson giữa các thành phần điểm**")
     else:
         st.warning("Không đủ dữ liệu để tạo ma trận tương quan.")
-
     # ==================== Ma trận Tương quan Pearson ====================
     st.divider()
     st.subheader("🔢 Ma trận tương quan Pearson")
