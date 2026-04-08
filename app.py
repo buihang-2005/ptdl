@@ -147,34 +147,61 @@ with tab2:
         bottom10 = df_filtered.nsmallest(10, score_col)[['Họ và tên', 'Lớp', score_col, 'Học lực']]
         st.dataframe(bottom10.reset_index(drop=True), use_container_width=True)
 
-# ====================== TAB 3: TƯƠNG QUAN, PIE & PHÂN TÁN (MỚI) ======================
+# ====================== TAB 3: TƯƠNG QUAN, PIE & PHÂN TÁN ======================
 with tab3:
     st.header("📈 Tương quan, Phân bố học lực & Biểu đồ phân tán")
     
     col_a, col_b = st.columns([1, 1])
     
     with col_a:
-        # Pie Chart - Học lực
         st.subheader("Tỷ lệ phân bố Học lực")
         pie_fig = px.pie(df_filtered, names='Học lực', 
-                        title="Tỷ lệ học lực toàn bộ",
-                        color_discrete_sequence=px.colors.qualitative.Set3)
+                        title="Tỷ lệ học lực",
+                        color_discrete_sequence=px.colors.qualitative.Set3,
+                        hole=0.4)   # Làm biểu đồ donut đẹp hơn
         st.plotly_chart(pie_fig, use_container_width=True)
     
     with col_b:
-        # Scatter Plot - Process vs Final (Biểu đồ phân tán)
         st.subheader("Biểu đồ phân tán: Process vs Final")
+        
+        # Biểu đồ phân tán được cải thiện
         scatter_fig = px.scatter(
             df_filtered,
             x='Process',
             y='Final',
             color='Lớp',
             size=score_col,
-            hover_data=['Họ và tên'],
+            hover_name='Họ và tên',           # Hiển thị tên khi hover
+            hover_data=['Học lực'],
             title="Mối quan hệ giữa Điểm Quá trình và Điểm Cuối kỳ",
-            labels={'Process': 'Điểm Quá trình (40%)', 'Final': 'Điểm Cuối kỳ (50%)'}
+            labels={
+                'Process': 'Điểm Quá trình (40%)',
+                'Final': 'Điểm Cuối kỳ (50%)'
+            },
+            opacity=0.85,                     # Giảm độ đục để dễ nhìn chồng chéo
+            color_discrete_sequence=px.colors.qualitative.Bold,  # Màu đẹp và rõ ràng hơn
+            trendline="ols",                  # Thêm đường hồi quy tuyến tính
+            trendline_scope="overall"         # Đường trend chung cho tất cả
         )
-        scatter_fig.update_layout(height=550)
+        
+        # Cải thiện layout
+        scatter_fig.update_layout(
+            height=620,
+            legend_title="Lớp",
+            plot_bgcolor='rgba(240,240,240,0.8)',
+            xaxis=dict(gridcolor='lightgray'),
+            yaxis=dict(gridcolor='lightgray')
+        )
+        
+        # Điều chỉnh kích thước điểm cho đẹp hơn
+        scatter_fig.update_traces(
+            marker=dict(
+                line=dict(width=0.5, color='DarkSlateGrey'),  # Viền điểm
+                sizeref=0.1,      # Giảm kích thước điểm
+                sizemin=6
+            )
+        )
+        
         st.plotly_chart(scatter_fig, use_container_width=True)
     
     # Ma trận tương quan
@@ -185,15 +212,17 @@ with tab3:
     
     if len(available_corr_cols) > 1:
         corr_matrix = df_filtered[available_corr_cols].corr().round(3)
-        fig_corr = px.imshow(corr_matrix, 
-                            text_auto=True,
-                            aspect="auto",
-                            color_continuous_scale='RdBu_r',
-                            title="Ma trận tương quan Pearson")
-        fig_corr.update_layout(height=600)
+        fig_corr = px.imshow(
+            corr_matrix, 
+            text_auto=True,
+            aspect="auto",
+            color_continuous_scale='RdBu_r',
+            title="Ma trận tương quan Pearson"
+        )
+        fig_corr.update_layout(height=580)
         st.plotly_chart(fig_corr, use_container_width=True)
     else:
-        st.warning("Không đủ dữ liệu thành phần để tính tương quan.")
+        st.info("Không đủ dữ liệu thành phần điểm để tính tương quan.")
 
 # ====================== TAB 4: DỮ LIỆU THÔ ======================
 with tab4:
