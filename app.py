@@ -176,11 +176,14 @@ with tab3:
             color_discrete_sequence=['#1f4e79']
         )
        
-        # Thêm đường hồi quy tuyến tính
+        # ================== HỒI QUY CHỈ TỪ 0 ĐẾN 10 ==================
         x_vals = df_filtered[score_col].values
         y_vals = df_filtered['Final'].values
-        if len(x_vals) > 1:  # Tránh lỗi khi dữ liệu quá ít
+        
+        if len(x_vals) > 1:
             slope, intercept = np.polyfit(x_vals, y_vals, 1)
+            
+            # Đường hồi quy chỉ vẽ trong khoảng 0 đến 10
             x_line = np.array([0, 10])
             y_line = slope * x_line + intercept
             
@@ -192,10 +195,10 @@ with tab3:
                 line=dict(color='#d62728', width=3.5)
             ))
        
-        # ================== CẤU HÌNH TRỤC Y CHỈ TỪ 0 ĐẾN 10 ==================
+        # Cấu hình trục: Giới hạn chặt từ 0 đến 10
         scatter.update_layout(
             height=720,
-            width=720,                          # Giữ tỷ lệ vuông
+            width=720,
             plot_bgcolor='#f0f6ff',
             
             xaxis=dict(
@@ -211,11 +214,11 @@ with tab3:
             
             yaxis=dict(
                 title="Điểm Cuối kỳ (50%)",
-                range=[0, 10],                  # ← Buộc chặt từ 0 đến 10
+                range=[0, 10],                  # Trục Y chỉ từ 0 đến 10
                 dtick=1,
                 gridcolor='lightgray',
-                autorange=False,                # Ngăn Plotly tự động thay đổi
-                scaleanchor="x",                # Giữ tỷ lệ X và Y bằng nhau
+                autorange=False,
+                scaleanchor="x",                # Giữ tỷ lệ X-Y bằng nhau
                 scaleratio=1,
                 showline=True,
                 linewidth=1,
