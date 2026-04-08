@@ -72,7 +72,6 @@ def get_hoc_luc(x):
 df_all['Học lực'] = df_all[score_col].apply(get_hoc_luc)
 
 # ====================== SIDEBAR ======================
-# ====================== SIDEBAR ======================
 st.sidebar.header("🔍 Bộ lọc")
 
 view_mode = st.sidebar.radio("Chế độ xem:", ["Chi tiết từng lớp", "So sánh nhiều lớp"])
@@ -86,13 +85,12 @@ else:
                                              default=sorted(df_all['Lớp'].unique()))
     df_filtered = df_all[df_all['Lớp'].isin(selected_classes)].copy()
 
+# ====================== LOGO HUB ======================
 st.sidebar.markdown("---")
 
-col1, col2, col3 = st.sidebar.columns([1, 2, 1])
-with col2:
-    st.image("hub_logo.png", width=240)   # Bạn có thể chỉnh số 240 thành 200 hoặc 260 tùy ý
+# Hiển thị logo
+st.sidebar.image("hub_logo.png", use_container_width=True)
 
-st.sidebar.caption("")   # Để tạo khoảng trống nếu cần
 
 # ====================== TABS ======================
 tab1, tab2, tab3, tab4 = st.tabs([
