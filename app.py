@@ -7,7 +7,7 @@ st.set_page_config(page_title="Phân tích Điểm AMA301", layout="wide")
 st.title("📊 PHÂN TÍCH ĐIỂM MÔN AMA301 - 2511")
 
 # ====================== LOAD & CLEAN DATA ======================
-@st.cache_data(show_spinner="Đang tải dữ liệu từ 4 lớp học phần...")
+@st.cache_data(show_spinner="Đang tải và xử lý dữ liệu từ 4 lớp...")
 def load_and_clean_data():
     file = "ptdl.xlsx"
     sheet_info = {
@@ -21,7 +21,6 @@ def load_and_clean_data():
     for sheet_name, class_name in sheet_info.items():
         df = pd.read_excel(file, sheet_name=sheet_name, header=0)
         
-        # Rename cột quan trọng
         rename_dict = {
             'Họ và tên': 'Ho_ten',
             'Lớp sinh hoạt': 'Lop',
@@ -35,7 +34,6 @@ def load_and_clean_data():
         }
         df = df.rename(columns=rename_dict)
         
-        # Giữ các cột chính
         keep_cols = ['Ho_ten', 'Lop', 'Chuyen_can', 'GK', 'Qua_trinh', 'Cuoi_ky', 'Diem_tong', 'Xep_loai']
         df = df[[col for col in keep_cols if col in df.columns]].copy()
         
@@ -44,16 +42,13 @@ def load_and_clean_data():
             if col in df.columns:
                 df[col] = pd.to_numeric(df[col], errors='coerce')
         
-        # Xóa dòng rác (Pivot Table, Grand Total, Row Labels...)
+        # Loại bỏ dòng rác từ Pivot Table
         df = df.dropna(subset=['Diem_tong'], how='all')
         df = df[~df['Ho_ten'].astype(str).str.contains('Row Labels|Grand Total|TOP 5|Average', na=False, case=False)]
         
-        # Thêm cột lớp học phần
         df['Lop_hoc_phan'] = class_name
-        
         dfs[class_name] = df
     
-    # Gộp tất cả thành một DataFrame
     df_full = pd.concat(dfs.values(), ignore_index=True)
     
     # Tạo biến mới
@@ -64,7 +59,6 @@ def load_and_clean_data():
     df_full['Diff'] = (df_full['Process'] - df_full['Final']).round(2)
     df_full['Abs_Diff'] = abs(df_full['Diff'])
     
-    # Phân loại học lực
     def classify(score):
         if pd.isna(score): return "Chưa có"
         if score >= 9.0: return "Xuất sắc"
@@ -77,51 +71,65 @@ def load_and_clean_data():
     
     return df_full, dfs
 
-# Load dữ liệu
-df, df_dict = load_and_clean_data()   # df_dict chứa dữ liệu riêng từng lớp
+df, df_dict = load_and_clean_data()
 
 # ====================== SIDEBAR ======================
 st.sidebar.header("📁 Thông tin tổng quan")
 st.sidebar.write(f"**Tổng số sinh viên:** {len(df):,}")
+
 for lop in ['D05', 'D12', 'D13', 'D14']:
     st.sidebar.write(f"**Lớp {lop}:** {len(df_dict[lop])} sinh viên")
 
 # ====================== TABS ======================
 tab1, tab2, tab3, tab4, tab5 = st.tabs([
-    "1. Chi tiết 4 lớp học phần", 
+    "1. Chi tiết từng lớp học phần", 
     "2. So sánh 4 lớp", 
     "3. Overview Tổng thể", 
     "4. Process vs Final", 
     "5. Ranking & Học lực"
 ])
 
-# ==================== TAB 1: CHI TIẾT TỪNG LỚP ====================
+# ==================== TAB 1: CHỌN LỚP ĐỂ XEM CHI TIẾT ====================
 with tab1:
-    st.header("1. CHI TIẾT THEO 4 LỚP HỌC PHẦN")
+    st.header("1. CHI TIẾT TỪNG LỚP HỌC PHẦN")
     
-    for lop in ['D05', 'D12', 'D13', 'D14']:
-        df_lop = df_dict[lop]
-        if df_lop.empty:
-            continue
-            
-        st.subheader(f"🔹 Lớp {lop} — {len(df_lop)} sinh viên")
-        
-        # Thống kê cơ bản
-        stats = df_lop['Diem_tong'].describe().round(2)
-        st.dataframe(stats, use_container_width=True)
-        
-        col1, col2 = st.columns(2)
-        with col1:
-            fig_hist = px.histogram(df_lop, x='Diem_tong', nbins=15, 
-                                   title=f"Histogram điểm tổng - Lớp {lop}",
-                                   color_discrete_sequence=['#636EFA'])
-            st.plotly_chart(fig_hist, use_container_width=True)
-        
-        with col2:
-            fig_box = px.box(df_lop, y='Diem_tong', title=f"Boxplot - Lớp {lop}")
-            st.plotly_chart(fig_box, use_container_width=True)
-        
-        st.divider()
+    # Selectbox để chọn lớp
+    selected_class = st.selectbox(
+        "Chọn lớp học phần để xem chi tiết:",
+        options=['D05', 'D12', 'D13', 'D14'],
+        index=0
+    )
+    
+    df_selected = df_dict[selected_class]
+    
+    st.subheader(f"🔹 Lớp {selected_class} — {len(df_selected)} sinh viên")
+    
+    # Thống kê
+    stats = df_selected['Diem_tong'].describe().round(2)
+    st.dataframe(stats, use_container_width=True)
+    
+    # Biểu đồ
+    col1, col2 = st.columns(2)
+    with col1:
+        fig_hist = px.histogram(df_selected, x='Diem_tong', nbins=15,
+                               title=f"Histogram điểm tổng - Lớp {selected_class}",
+                               color_discrete_sequence=['#636EFA'])
+        st.plotly_chart(fig_hist, use_container_width=True)
+    
+    with col2:
+        fig_box = px.box(df_selected, y='Diem_tong', 
+                        title=f"Boxplot điểm tổng - Lớp {selected_class}")
+        st.plotly_chart(fig_box, use_container_width=True)
+    
+    # Top & Bottom trong lớp
+    st.subheader(f"Top 5 và Bottom 5 của lớp {selected_class}")
+    colA, colB = st.columns(2)
+    with colA:
+        st.write("**Top 5 cao nhất**")
+        st.dataframe(df_selected.nlargest(5, 'Diem_tong')[['Ho_ten', 'Diem_tong', 'Hoc_luc']])
+    with colB:
+        st.write("**Bottom 5 thấp nhất**")
+        st.dataframe(df_selected.nsmallest(5, 'Diem_tong')[['Ho_ten', 'Diem_tong', 'Hoc_luc']])
 
 # ==================== TAB 2: SO SÁNH 4 LỚP ====================
 with tab2:
@@ -137,28 +145,26 @@ with tab2:
     col1, col2 = st.columns(2)
     with col1:
         fig_bar = px.bar(comparison.reset_index(), x='Lop_hoc_phan', y='Điểm TB',
-                        title="Điểm trung bình theo lớp học phần",
-                        color='Điểm TB', text='Điểm TB')
+                        title="Điểm trung bình theo lớp học phần", color='Điểm TB', text='Điểm TB')
         fig_bar.update_traces(texttemplate='%{text:.2f}')
         st.plotly_chart(fig_bar, use_container_width=True)
     
     with col2:
         st.plotly_chart(px.box(df, x='Lop_hoc_phan', y='Diem_tong', 
-                              title="Phân phối điểm tổng theo 4 lớp"), 
-                       use_container_width=True)
+                              title="Phân phối điểm theo 4 lớp"), use_container_width=True)
 
-# ==================== Các tab còn lại ====================
+# ==================== TAB 3,4,5 (giữ nguyên) ====================
 with tab3:
     st.header("3. OVERVIEW TỔNG THỂ")
     c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Tổng sinh viên", len(df))
-    c2.metric("Điểm trung bình", f"{df['Diem_tong'].mean():.2f}")
+    c1.metric("Tổng SV", len(df))
+    c2.metric("Điểm TB", f"{df['Diem_tong'].mean():.2f}")
     c3.metric("Trung vị", f"{df['Diem_tong'].median():.2f}")
-    c4.metric("Độ lệch chuẩn", f"{df['Diem_tong'].std():.2f}")
+    c4.metric("Std", f"{df['Diem_tong'].std():.2f}")
 
     colA, colB = st.columns(2)
     with colA:
-        st.plotly_chart(px.histogram(df, x='Diem_tong', nbins=25, title="Histogram Điểm Tổng Hợp"), 
+        st.plotly_chart(px.histogram(df, x='Diem_tong', nbins=25, title="Histogram Điểm Tổng"), 
                        use_container_width=True)
     with colB:
         st.plotly_chart(px.box(df, y='Diem_tong', title="Boxplot Tổng thể"), 
@@ -167,22 +173,21 @@ with tab3:
 with tab4:
     st.header("4. PROCESS VS FINAL")
     fig = px.scatter(df, x='Process', y='Final', color='Lop_hoc_phan',
-                     title="Điểm Quá trình so với Điểm Cuối kỳ (màu theo lớp)",
-                     labels={'Lop_hoc_phan': 'Lớp học phần'})
+                     title="Điểm Quá trình vs Điểm Cuối kỳ (theo lớp)")
     fig.add_shape(type="line", x0=0, y0=0, x1=10, y1=10, line=dict(color="red", dash="dash"))
     st.plotly_chart(fig, use_container_width=True)
 
 with tab5:
-    st.header("5. RANKING & PHÂN BỐ HỌC LỰC")
+    st.header("5. RANKING & HỌC LỰC")
     col1, col2 = st.columns(2)
     with col1:
-        st.subheader("🏆 Top 10 điểm cao nhất")
+        st.subheader("🏆 Top 10 cao nhất toàn khóa")
         st.dataframe(df.nlargest(10, 'Diem_tong')[['Ho_ten', 'Lop_hoc_phan', 'Diem_tong', 'Hoc_luc']])
     with col2:
-        st.subheader("📉 Bottom 10 điểm thấp nhất")
+        st.subheader("📉 Bottom 10 thấp nhất toàn khóa")
         st.dataframe(df.nsmallest(10, 'Diem_tong')[['Ho_ten', 'Lop_hoc_phan', 'Diem_tong', 'Hoc_luc']])
     
     st.plotly_chart(px.bar(df['Hoc_luc'].value_counts().sort_index(), 
-                          title="Phân bố học lực toàn khóa"), use_container_width=True)
+                          title="Phân bố học lực toàn bộ"), use_container_width=True)
 
-st.sidebar.success("✅ Đã chia rõ ràng theo 4 lớp học phần (D05, D12, D13, D14)")
+st.sidebar.success("✅ Đã hỗ trợ chọn lớp để xem chi tiết")
