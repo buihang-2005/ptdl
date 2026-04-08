@@ -149,13 +149,13 @@ with tab2:
 with tab3:
     st.header("📈 Tương quan giữa Điểm Cuối kỳ và Điểm Tổng hợp")
     
-    # ================== PHẦN PIE CHART Ở TRÊN ==================
+    # Pie chart ở trên
     st.subheader("Tỷ lệ Học lực")
     pie = px.pie(df_filtered, names='Học lực', hole=0.4,
                 color_discrete_sequence=px.colors.qualitative.Set3)
     st.plotly_chart(pie, use_container_width=True)
-    
-    # ================== PHẦN SCATTER Ở DƯỚI ==================
+
+    # Scatter chart ở dưới
     st.subheader("Biểu đồ phân tán và Hồi quy tuyến tính")
     
     # Tạo biểu đồ scatter
@@ -191,14 +191,14 @@ with tab3:
             line=dict(color='#d62728', width=3.5)
         ))
    
-    # ================== THU RANGE CẢ HAI TRỤC TỪ 0 ĐẾN 10 ==================
+    # ================== RANGE CẢ HAI TRỤC TỪ 0 ĐẾN 10 ==================
     scatter.update_layout(
-        height=650,
+        height=680,
         plot_bgcolor='#f0f6ff',
         
         xaxis=dict(
             title="Điểm Tổng hợp",
-            range=[0, 10],
+            range=[0, 10],                  # Trục X từ 0 đến 10
             dtick=1,
             gridcolor='lightgray',
             autorange=False,
@@ -209,11 +209,11 @@ with tab3:
         
         yaxis=dict(
             title="Điểm Cuối kỳ (50%)",
-            range=[0, 10],                  # ← Thu gọn trục Y chỉ từ 0 đến 10
+            range=[0, 10],                  # Trục Y từ 0 đến 10
             dtick=1,
             gridcolor='lightgray',
             autorange=False,
-            scaleanchor="x",
+            scaleanchor="x",                # Giữ tỷ lệ X và Y bằng nhau
             scaleratio=1,
             showline=True,
             linewidth=1,
