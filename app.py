@@ -82,7 +82,8 @@ if view_mode == "Chi tiết từng lớp":
     selected_class = st.sidebar.selectbox("Chọn lớp", sorted(df_all['Lớp'].unique()))
     df_filtered = df_all[df_all['Lớp'] == selected_class].copy()
 else:
-    selected_classes = st.sidebar.multiselect("Chọn lớp", sorted(df_all['Lớp'].unique()), 
+    selected_classes = st.sidebar.multiselect("Chọn lớp", 
+                                             sorted(df_all['Lớp'].unique()), 
                                              default=sorted(df_all['Lớp'].unique()))
     df_filtered = df_all[df_all['Lớp'].isin(selected_classes)].copy()
 
@@ -91,22 +92,24 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs([
     "📊 Thống kê cơ bản",
     "🏆 Top & Bottom",
     "📈 Tương quan & Phân tán",
-    "📊 Biểu đồ so sánh",
+    "📊 So sánh nhiều lớp",
     "📋 Dữ liệu thô"
 ])
 
-# TAB 1: Thống kê cơ bản
+# ====================== TAB 1: Chi tiết từng lớp ======================
 with tab1:
     if view_mode == "Chi tiết từng lớp":
-        st.header(f"📋 Chi tiết lớp {selected_class}")
+        st.header(f"📋 Chi tiết lớp {selected_class} ({len(df_filtered)} sinh viên)")
         st.dataframe(df_filtered[score_col].describe().round(3), use_container_width=True)
         
         c1, c2 = st.columns(2)
         with c1:
-            st.plotly_chart(px.histogram(df_filtered, x=score_col, nbins=20, title="Histogram điểm tổng hợp"), 
+            st.plotly_chart(px.histogram(df_filtered, x=score_col, nbins=20,
+                                        title="Histogram điểm tổng hợp"), 
                            use_container_width=True)
         with c2:
-            st.plotly_chart(px.violin(df_filtered, y=score_col, title="Violin Plot phân bố điểm"), 
+            st.plotly_chart(px.box(df_filtered, y=score_col,
+                                  title="Boxplot điểm tổng hợp"), 
                            use_container_width=True)
     else:
         st.header("📦 So sánh các lớp")
@@ -114,7 +117,7 @@ with tab1:
         stats['Count'] = stats['count'].astype(int)
         st.dataframe(stats, use_container_width=True)
 
-# TAB 2: Top & Bottom
+# ====================== TAB 2: Top & Bottom ======================
 with tab2:
     st.header("🏆 Xếp hạng sinh viên")
     c1, c2 = st.columns(2)
@@ -127,7 +130,7 @@ with tab2:
         bot10 = df_filtered.nsmallest(10, score_col)[['Họ và tên', 'Lớp', score_col, 'Học lực']]
         st.dataframe(bot10.reset_index(drop=True), use_container_width=True)
 
-# TAB 3: Tương quan & Phân tán (Điểm Cuối kỳ vs Điểm Tổng)
+# ====================== TAB 3: Tương quan Final vs Tổng ======================
 with tab3:
     st.header("📈 Tương quan giữa Điểm Cuối kỳ và Điểm Tổng hợp")
     
@@ -140,7 +143,7 @@ with tab3:
         st.plotly_chart(pie, use_container_width=True)
     
     with col_b:
-        st.subheader("Biểu đồ phân tán Final vs Tổng điểm")
+        st.subheader("Biểu đồ phân tán: Final vs Tổng điểm")
         scatter = px.scatter(
             df_filtered,
             x='Final',
@@ -161,45 +164,58 @@ with tab3:
         y_line = slope * x_line + intercept
         
         scatter.add_trace(go.Scatter(x=x_line, y=y_line, mode='lines',
-                                    name='Hồi quy tuyến tính', line=dict(color='#d62728', width=3.5)))
+                                    name='Hồi quy tuyến tính', 
+                                    line=dict(color='#d62728', width=3.5)))
         
         scatter.update_layout(height=650, plot_bgcolor='#f0f6ff')
         st.plotly_chart(scatter, use_container_width=True)
     
     corr_value = df_filtered['Final'].corr(df_filtered[score_col]).round(4)
-    st.success(f"**Hệ số tương quan (r) = {corr_value}** (càng gần 1 càng mạnh)")
+    st.success(f"**Hệ số tương quan (r) giữa Điểm Cuối kỳ và Điểm Tổng hợp = {corr_value}**")
 
-# TAB 4: Biểu đồ so sánh mới
+# ====================== TAB 4: SO SÁNH NHIỀU LỚP (ĐÃ TĂNG CƯỜNG) ======================
 with tab4:
-    st.header("📊 Các biểu đồ so sánh khác")
+    st.header("📊 So sánh chi tiết giữa các lớp")
+    
+    # 1. Điểm trung bình theo lớp
+    mean_by_class = df_filtered.groupby('Lớp')[['Process', 'Final', score_col]].mean().round(2)
+    st.subheader("Điểm trung bình theo lớp")
+    st.dataframe(mean_by_class, use_container_width=True)
     
     c1, c2 = st.columns(2)
     
     with c1:
-        st.subheader("Tỷ lệ học lực theo lớp (Stacked Bar)")
-        hoc_luc_pivot = pd.crosstab(df_filtered['Lớp'], df_filtered['Học lực'], normalize='index') * 100
-        fig_bar = px.bar(hoc_luc_pivot, barmode='stack', title="Tỷ lệ % học lực theo lớp")
-        st.plotly_chart(fig_bar, use_container_width=True)
-    
-    with c2:
-        st.subheader("So sánh điểm trung bình theo thành phần")
-        mean_scores = df_filtered[['Process', 'Final', score_col]].mean().round(2)
-        fig_mean = px.bar(x=mean_scores.index, y=mean_scores.values, 
-                         title="Điểm trung bình các thành phần",
-                         labels={'x': 'Thành phần', 'y': 'Điểm trung bình'},
-                         color_discrete_sequence=['#2ca02c'])
+        # Bar chart so sánh trung bình
+        fig_mean = px.bar(mean_by_class.reset_index(), 
+                         x='Lớp', 
+                         y=[ 'Process', 'Final', score_col],
+                         barmode='group',
+                         title="So sánh điểm trung bình các thành phần theo lớp")
         st.plotly_chart(fig_mean, use_container_width=True)
     
-    st.subheader("Violin Plot theo lớp")
-    violin = px.violin(df_filtered, x='Lớp', y=score_col, color='Lớp', 
-                      title="Phân bố điểm theo lớp (Violin)")
-    st.plotly_chart(violin, use_container_width=True)
+    with c2:
+        # Stacked bar tỷ lệ học lực
+        st.subheader("Tỷ lệ học lực theo lớp")
+        hoc_luc_pct = pd.crosstab(df_filtered['Lớp'], df_filtered['Học lực'], normalize='index') * 100
+        fig_stack = px.bar(hoc_luc_pct, barmode='stack', 
+                          title="Tỷ lệ % học lực theo từng lớp",
+                          labels={'value': 'Tỷ lệ (%)'})
+        st.plotly_chart(fig_stack, use_container_width=True)
+    
+    # Boxplot so sánh
+    st.subheader("Phân bố điểm tổng hợp theo lớp")
+    fig_box = px.box(df_filtered, x='Lớp', y=score_col, color='Lớp',
+                    title="Boxplot so sánh phân bố điểm giữa các lớp")
+    st.plotly_chart(fig_box, use_container_width=True)
 
-# TAB 5: Dữ liệu thô
+# ====================== TAB 5: Dữ liệu thô ======================
 with tab5:
     st.header("📋 Dữ liệu thô")
     display_cols = ['Họ và tên', 'Lớp', 'Process', 'Final', score_col, 'Học lực']
-    st.dataframe(df_filtered[display_cols].sort_values(by=score_col, ascending=False),
-                 use_container_width=True, hide_index=True)
+    st.dataframe(
+        df_filtered[display_cols].sort_values(by=score_col, ascending=False),
+        use_container_width=True, 
+        hide_index=True
+    )
 
 st.caption("Ứng dụng phân tích điểm AMA301 - 2511_1")
