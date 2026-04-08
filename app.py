@@ -160,7 +160,6 @@ with tab3:
     with col_b:
         st.subheader("Biểu đồ phân tán ngang (0 - 10)")
         
-        # Biểu đồ phân tán QUAY NGANG
         scatter = px.scatter(
             df_filtered,
             x=score_col,                    # Trục X: Điểm Tổng hợp
@@ -176,7 +175,7 @@ with tab3:
             color_discrete_sequence=['#1f4e79']
         )
        
-        # Thêm đường hồi quy tuyến tính (chỉ trong khoảng 0-10)
+        # Đường hồi quy tuyến tính (giới hạn trong 0-10)
         x_vals = df_filtered[score_col].values
         y_vals = df_filtered['Final'].values
         slope, intercept = np.polyfit(x_vals, y_vals, 1)
@@ -191,10 +190,10 @@ with tab3:
             line=dict(color='#d62728', width=3.5)
         ))
        
-        # ================== FIX CHẶT TRỤC Y CHỈ TỪ 0 ĐẾN 10 ==================
+        # ================== FIX CHẶT TRỤC Y TỪ 0 ĐẾN 10 ==================
         scatter.update_layout(
-            height=700,
-            width=700,                                   # Giữ biểu đồ vuông
+            height=720,
+            width=720,
             plot_bgcolor='#f0f6ff',
             
             xaxis=dict(
@@ -202,25 +201,28 @@ with tab3:
                 range=[0, 10],
                 dtick=1,
                 gridcolor='lightgray',
-                constrain='domain',
-                autorange=False
+                autorange=False,
+                showline=True,
+                linewidth=1,
+                linecolor='black'
             ),
             
             yaxis=dict(
                 title="Điểm Cuối kỳ (50%)",
-                range=[0, 10],                           # Buộc chặt từ 0 đến 10
+                range=[0, 10],                    # Bắt đầu từ 0 đến 10
                 dtick=1,
                 gridcolor='lightgray',
-                scaleanchor="x",                         # Giữ tỷ lệ X-Y bằng nhau
+                autorange=False,                  # Buộc không tự scale
+                scaleanchor="x",                  # Giữ tỷ lệ X = Y
                 scaleratio=1,
-                autorange=False,                         # ← Quan trọng: tắt tự động scale
-                tickmode='linear'
+                showline=True,
+                linewidth=1,
+                linecolor='black'
             )
         )
         
         st.plotly_chart(scatter, use_container_width=True)
    
-    # Hiển thị hệ số tương quan
     corr_value = df_filtered['Final'].corr(df_filtered[score_col]).round(4)
     st.success(f"**Hệ số tương quan Pearson (r) = {corr_value}**")
 
