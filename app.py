@@ -163,8 +163,8 @@ with tab3:
         # Biểu đồ phân tán QUAY NGANG
         scatter = px.scatter(
             df_filtered,
-            x=score_col,           # Trục X: Điểm Tổng hợp
-            y='Final',             # Trục Y: Điểm Cuối kỳ
+            x=score_col,                    # Trục X: Điểm Tổng hợp
+            y='Final',                      # Trục Y: Điểm Cuối kỳ
             hover_name='Họ và tên',
             hover_data=['Học lực', 'Lớp'],
             title="Tương quan Điểm Cuối kỳ ↔ Điểm Tổng hợp",
@@ -191,25 +191,30 @@ with tab3:
             line=dict(color='#d62728', width=3.5)
         ))
        
-        # ================== GIỚI HẠN HỆ SỐ CHỈ TỪ 0 ĐẾN 10 ==================
+        # ================== FIX CHẶT TRỤC Y CHỈ TỪ 0 ĐẾN 10 ==================
         scatter.update_layout(
-            height=680,
-            width=680,                        # Giữ biểu đồ gần vuông
+            height=700,
+            width=700,                                   # Giữ biểu đồ vuông
             plot_bgcolor='#f0f6ff',
+            
             xaxis=dict(
                 title="Điểm Tổng hợp",
-                range=[0, 10],                # X từ 0 đến 10
+                range=[0, 10],
                 dtick=1,
                 gridcolor='lightgray',
-                constrain='domain'
+                constrain='domain',
+                autorange=False
             ),
+            
             yaxis=dict(
                 title="Điểm Cuối kỳ (50%)",
-                range=[0, 10],                # ← Y CHỈ TỪ 0 ĐẾN 10 (đã fix)
+                range=[0, 10],                           # Buộc chặt từ 0 đến 10
                 dtick=1,
                 gridcolor='lightgray',
-                scaleanchor="x",              # Giữ tỷ lệ X và Y bằng nhau
-                scaleratio=1
+                scaleanchor="x",                         # Giữ tỷ lệ X-Y bằng nhau
+                scaleratio=1,
+                autorange=False,                         # ← Quan trọng: tắt tự động scale
+                tickmode='linear'
             )
         )
         
@@ -254,7 +259,6 @@ with tab3:
         st.caption("**Hình: Ma trận tương quan Pearson giữa các thành phần điểm**")
     else:
         st.warning("Không đủ dữ liệu để tạo ma trận tương quan.")
-
 # ====================== TAB 4: Dữ liệu thô ======================
 with tab4:
     st.header("📋 Dữ liệu thô")
