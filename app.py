@@ -156,7 +156,7 @@ with tab3:
     st.plotly_chart(pie, use_container_width=True)
 
     # Scatter chart ở dưới
-    st.subheader("Biểu đồ phân tán và Hồi quy tuyến tính")
+    st.subheader("Scatter Chart")   # ← Đã sửa tên theo yêu cầu
     
     # Tạo biểu đồ scatter
     scatter = px.scatter(
@@ -191,17 +191,17 @@ with tab3:
             line=dict(color='#d62728', width=3.5)
         ))
    
-    # ================== BUỘC TRỤC X TỪ 0 ĐẾN 10 ==================
+    # Range cả hai trục từ 0 đến 10
     scatter.update_layout(
         height=680,
         plot_bgcolor='#f0f6ff',
         
         xaxis=dict(
             title="Điểm Tổng hợp",
-            range=[0, 10],                  # ← Trục X bắt đầu từ 0 và kết thúc ở 10
+            range=[0, 10],
             dtick=1,
             gridcolor='lightgray',
-            autorange=False,                # Buộc không tự mở rộng
+            autorange=False,
             showline=True,
             linewidth=1,
             linecolor='#333'
@@ -213,7 +213,7 @@ with tab3:
             dtick=1,
             gridcolor='lightgray',
             autorange=False,
-            scaleanchor="x",                # Giữ tỷ lệ X và Y bằng nhau
+            scaleanchor="x",
             scaleratio=1,
             showline=True,
             linewidth=1,
