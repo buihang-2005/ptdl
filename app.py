@@ -176,13 +176,13 @@ with tab3:
             color_discrete_sequence=['#1f4e79']
         )
        
-        # Hồi quy tuyến tính chỉ từ 0 đến 13
+        # Hồi quy tuyến tính chỉ vẽ trong khoảng 0 - 10
         x_vals = df_filtered[score_col].values
         y_vals = df_filtered['Final'].values
         
         if len(x_vals) > 1:
             slope, intercept = np.polyfit(x_vals, y_vals, 1)
-            x_line = np.array([0, 13])          # Giới hạn hồi quy từ 0 đến 13
+            x_line = np.array([0, 10])
             y_line = slope * x_line + intercept
             
             scatter.add_trace(go.Scatter(
@@ -193,18 +193,18 @@ with tab3:
                 line=dict(color='#d62728', width=3.5)
             ))
        
-        # ================== BUỘC CHẶT GIÁ TRỊ TỪ 0 ĐẾN 13 ==================
+        # ================== THU NHỎ TRỤC Y CHỈ TỪ 0 ĐẾN 10 ==================
         scatter.update_layout(
-            height=750,
-            width=750,
+            height=720,
+            width=720,
             plot_bgcolor='#f0f6ff',
             
             xaxis=dict(
                 title="Điểm Tổng hợp",
-                range=[0, 13],                  # Từ 0 đến 13
+                range=[0, 13],                  # Trục X giữ nguyên 0-13 (theo dữ liệu)
                 dtick=1,
                 gridcolor='lightgray',
-                autorange=False,                # Ngăn tự động scale
+                autorange=False,
                 showline=True,
                 linewidth=1,
                 linecolor='#333'
@@ -212,11 +212,11 @@ with tab3:
             
             yaxis=dict(
                 title="Điểm Cuối kỳ (50%)",
-                range=[0, 13],                  # ← Từ 0 đến 13 (quan trọng)
+                range=[0, 10],                  # ← THU NHỎ CHỈ TỪ 0 ĐẾN 10
                 dtick=1,
                 gridcolor='lightgray',
-                autorange=False,
-                scaleanchor="x",                # Giữ tỷ lệ gần bằng nhau
+                autorange=False,                # Buộc không tự mở rộng
+                scaleanchor="x",                # Giữ tỷ lệ
                 scaleratio=1,
                 showline=True,
                 linewidth=1,
@@ -229,6 +229,42 @@ with tab3:
     # Hiển thị hệ số tương quan
     corr_value = df_filtered['Final'].corr(df_filtered[score_col]).round(4)
     st.success(f"**Hệ số tương quan Pearson (r) = {corr_value}**")
+
+    # ==================== Ma trận Tương quan Pearson ====================
+    st.divider()
+    st.subheader("🔢 Ma trận tương quan Pearson")
+
+    corr_columns = ['Chuyên cần 10%', 'Kiểm tra GK 20%',
+                    'Thảo luận, BTN, TT 20%', 'Thi cuối kỳ 50%', score_col]
+   
+    available_cols = [col for col in corr_columns if col in df_filtered.columns]
+   
+    if len(available_cols) > 1:
+        corr_matrix = df_filtered[available_cols].corr().round(3)
+       
+        short_names = {
+            'Chuyên cần 10%': 'CC',
+            'Kiểm tra GK 20%': 'GK',
+            'Thảo luận, BTN, TT 20%': 'TL',
+            'Thi cuối kỳ 50%': 'CK',
+            score_col: 'TH'
+        }
+        corr_matrix = corr_matrix.rename(columns=short_names, index=short_names)
+       
+        fig_corr = px.imshow(
+            corr_matrix,
+            text_auto=True,
+            aspect="auto",
+            color_continuous_scale='RdYlBu_r',
+            title="Ma trận tương quan Pearson"
+        )
+       
+        fig_corr.update_layout(height=650, title_font=dict(size=18))
+        st.plotly_chart(fig_corr, use_container_width=True)
+       
+        st.caption("**Hình: Ma trận tương quan Pearson giữa các thành phần điểm**")
+    else:
+        st.warning("Không đủ dữ liệu để tạo ma trận tương quan.")
 
     # ==================== Ma trận Tương quan Pearson ====================
     st.divider()
